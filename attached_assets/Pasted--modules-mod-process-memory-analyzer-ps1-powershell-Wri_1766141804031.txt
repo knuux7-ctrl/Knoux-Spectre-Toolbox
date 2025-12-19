@@ -1,0 +1,688 @@
+## 📄 modules/mod.process/memory.analyzer.ps1 (续)
+
+```powershell
+        {
+            Write-Host "${ANSI.TEXT_SECONDARY}Cancelled process termination${ANSI.RESET}"
+        }
+    } catch [System.Diagnostics.ProcessModuleNotFound] {
+        Write-Host "${ANSI.TEXT_SECONDARY}No processes found with name '$processName'${ANSI.RESET}"
+    } catch {
+        Write-Host "${ANSI.RED}× Error managing processes: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+function Kill-ProcessById {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter PID to kill:${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $pidInput = Read-Host
+    
+    if (-not ($pidInput -match "^\d+$")) {
+        Write-Host "${ANSI.RED}× Invalid PID. Must be a number${ANSI.RESET}"
+        return
+    }
+    
+    [int]$pid = [int]$pidInput
+    
+    try {
+        $process = Get-Process -Id $pid -ErrorAction Stop
+        
+        Write-Host ""
+        Write-Host "${ANSI.ORANGE}? Process Information${ANSI.RESET}"
+        Write-Host " ${ANSI.TEXT_SECONDARY}Name:${ANSI.RESET} ${ANSI.TEXT_PRIMARY}$($process.ProcessName)${ANSI.RESET}"
+        Write-Host " ${ANSI.TEXT_SECONDARY}Memory:${ANSI.RESET} ${ANSI.TEXT_PRIMARY}$(Format-KnouxBytes $process.WS)${ANSI.RESET}"
+        Write-Host " ${ANSI.TEXT_SECONDARY}CPU:${ANSI.RESET} ${ANSI.TEXT_PRIMARY}$(
+            if ($process.CPU -ne $null) { "$([math]::Round($process.CPU, 2)) seconds" } else { "N/A" }
+        )${ANSI.RESET}"
+        
+        $confirm = Confirm-KnouxAction "Kill process '$($process.ProcessName)' (PID: $pid)?" "N"
+        
+        if ($confirm) {
+            if (-not (Test-AdminPrivilege)) {
+                Write-Host ""
+                Write-Host "${ANSI.ORANGE}⚠ Administrator privileges may be required to kill this process${ANSI.RESET}"
+            }
+            
+            Write-Host ""
+            Write-Host "${ANSI.TEXT_SECONDARY}Killing process...${ANSI.RESET}" -NoNewline
+            $process | Stop-Process -Force -ErrorAction Stop
+            Write-Host " ${ANSI.GREEN}DONE${ANSI.RESET}"
+            Write-Host "${ANSI.GREEN}✓ Process terminated successfully${ANSI.RESET}"
+        } else {
+            Write-Host "${ANSI.TEXT_SECONDARY}Cancelled process termination${ANSI.RESET}"
+        }
+    } catch [System.Diagnostics.ProcessModuleNotFound] {
+        Write-Host "${ANSI.RED}× No process found with PID $pid${ANSI.RESET}"
+    } catch {
+        Write-Host "${ANSI.RED}× Error terminating process: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+function Search-Processes {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter search term:${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $searchTerm = Read-Host
+    
+    if ([string]::IsNullOrWhiteSpace($searchTerm)) {
+        Write-Host "${ANSI.RED}× Search term cannot be empty${ANSI.RESET}"
+        return
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Searching processes for '$searchTerm'...${ANSI.RESET}"
+    
+    try {
+        $processes = Get-Process | Where-Object {
+            $_.ProcessName -like "*$searchTerm*" -or
+            $_.MainWindowTitle -like "*$searchTerm*"
+        } | Sort-Object ProcessName
+        
+        if ($processes.Count -eq 0) {
+            Write-Host "${ANSI.TEXT_SECONDARY}No processes found matching '$searchTerm'${ANSI.RESET}"
+            return
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.PURPLE}${ANSI.BOLD}SEARCH RESULTS ($($processes.Count))${ANSI.RESET}"
+        Write-Host "${ANSI.BORDER}────────────────────────${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}PID${ANSI.RESET}  ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} ${ANSI.PURPLE}Name${ANSI.RESET} ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} ${ANSI.PURPLE}Title${ANSI.RESET} ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} ${ANSI.PURPLE}Memory${ANSI.RESET}"
+        Write-Host " ${ANSI.BORDER}────────────────────────────────────────────${ANSI.RESET}"
+        
+        $processes | Select-Object -First 20 | ForEach-Object {
+            $pid = $_.Id
+            $name = $_.ProcessName
+            $title = if ($_.MainWindowTitle) { $_.MainWindowTitle } else { "N/A" }
+            if ($title.Length -gt 20) { $title = $title.Substring(0, 17) + "..." }
+            $memory = Format-KnouxBytes $_.WS
+            
+            Write-Host " ${ANSI.TEXT_SECONDARY}$pid${ANSI.RESET}".PadRight(7) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_PRIMARY}$name${ANSI.RESET}".PadRight(15) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_PRIMARY}$title${ANSI.RESET}".PadRight(23) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_PRIMARY}$memory${ANSI.RESET}"
+        }
+        
+        if ($processes.Count -gt 20) {
+            Write-Host ""
+            Write-Host "${ANSI.TEXT_SECONDARY}Showing first 20 of $($processes.Count) results${ANSI.RESET}"
+        }
+        
+    } catch {
+        Write-Host "${ANSI.RED}× Error searching processes: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+function Analyze-MemoryDump {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Memory dump analysis requires specialized tools${ANSI.RESET}"
+    Write-Host "${ANSI.TEXT_SECONDARY}This feature would integrate with Windows Debugger (WinDbg)${ANSI.RESET}"
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Recommended workflow:${ANSI.RESET}"
+    Write-Host " ${ANSI.GREEN}1.${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Create a memory dump using Task Manager or ProcDump${ANSI.RESET}"
+    Write-Host " ${ANSI.GREEN}2.${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Open the dump file with WinDbg${ANSI.RESET}"
+    Write-Host " ${ANSI.GREEN}3.${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Use debugging commands to analyze memory state${ANSI.RESET}"
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}In a future version, this could automate the process${ANSI.RESET}"
+}
+
+function Show-PerformanceMonitor {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Real-time performance monitoring...${ANSI.RESET}"
+    Write-Host ""
+    Write-Host "${ANSI.ORANGE}⚠ This feature would require continuous monitoring${ANSI.RESET}"
+    Write-Host "${ANSI.TEXT_SECONDARY}Press Ctrl+C to stop monitoring${ANSI.RESET}"
+    Write-Host ""
+    
+    try {
+        Write-Host "${ANSI.PURPLE}${ANSI.BOLD}REAL-TIME PERFORMANCE MONITOR${ANSI.RESET}"
+        Write-Host "${ANSI.BORDER}──────────────────────────────${ANSI.RESET}"
+        
+        # Show header
+        Write-Host " ${ANSI.PURPLE}Time${ANSI.RESET} ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} ${ANSI.PURPLE}CPU%${ANSI.RESET} ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} ${ANSI.PURPLE}Memory%${ANSI.RESET} ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} ${ANSI.PURPLE}Processes${ANSI.RESET}"
+        Write-Host " ${ANSI.BORDER}────────────────────────────────────${ANSI.RESET}"
+        
+        # Run for 10 iterations
+        for ($i = 0; $i -lt 10; $i++) {
+            # Get system info
+            $cpuUsage = (Get-Counter "\Processor(_Total)\% Processor Time" -ErrorAction SilentlyContinue).CounterSamples.CookedValue
+            $os = Get-CimInstance Win32_OperatingSystem
+            $memoryUsage = 100 - (($os.FreePhysicalMemory * 100) / $os.TotalVisibleMemorySize)
+            $processCount = (Get-Process).Count
+            
+            # Format values
+            $cpuDisplay = [math]::Round($cpuUsage, 1)
+            $memoryDisplay = [math]::Round($memoryUsage, 1)
+            $time = Get-Date -Format "HH:mm:ss"
+            
+            # Color coding
+            $cpuColor = if ($cpuDisplay -gt 80) { $ANSI.RED } elseif ($cpuDisplay -gt 50) { $ANSI.ORANGE } else { $ANSI.GREEN }
+            $memoryColor = if ($memoryDisplay -gt 80) { $ANSI.RED } elseif ($memoryDisplay -gt 50) { $ANSI.ORANGE } else { $ANSI.GREEN }
+            
+            # Display
+            Write-Host "`r ${ANSI.TEXT_SECONDARY}$time${ANSI.RESET}".PadRight(10) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${cpuColor}$cpuDisplay%${ANSI.RESET}".PadRight(8) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${memoryColor}$memoryDisplay%${ANSI.RESET}".PadRight(12) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_PRIMARY}$processCount${ANSI.RESET}"
+            
+            Start-Sleep -Seconds 1
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.TEXT_SECONDARY}Monitoring complete${ANSI.RESET}"
+    } catch {
+        Write-Host "${ANSI.RED}× Error monitoring performance: $($_.Exception.Message)${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}Note: This feature requires the Performance Counter module${ANSI.RESET}"
+    }
+}
+
+Export-ModuleMember -Function @('Show-MemoryAnalyzer')
+```
+
+✅ Process & Memory module created
+
+---
+## 📝 LOGS & MONITORING MODULE
+
+📄 Creating `modules/mod.logs/event.viewer.ps1`:
+
+```powershell
+<#
+.SYNOPSIS
+    Knoux Spectre Event Log Viewer
+.DESCRIPTION
+    View and analyze Windows event logs
+.AUTHOR
+    Knoux Systems
+.VERSION
+    1.0.0
+#>
+
+function Show-EventLogViewer {
+    [CmdletBinding()]
+    param()
+    
+    Clear-ScreenWithBackground
+    Write-Host "${ANSI.BG_DARK}${ANSI.PURPLE}${ANSI.BOLD}📝 EVENT LOG VIEWER${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}────────────────────────────────${ANSI.RESET}"
+    Write-Host ""
+    
+    do {
+        Write-Host "${ANSI.TEXT_SECONDARY}Event Log Options:${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}1${ANSI.RESET} ${ANSI.TEXT_PRIMARY}View System Events${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}2${ANSI.RESET} ${ANSI.TEXT_PRIMARY}View Application Events${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}3${ANSI.RESET} ${ANSI.TEXT_PRIMARY}View Security Events${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}4${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Search Event Logs${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}5${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Real-time Log Monitor${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}6${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Export Event Logs${ANSI.RESET}"
+        Write-Host ""
+        Write-Host " ${ANSI.RED}0${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Back to Menu${ANSI.RESET}"
+        Write-Host ""
+        
+        $choice = Read-ValidatedSubInput -Max 6
+        
+        switch ($choice) {
+            0 { return }
+            1 { View-SystemEvents }
+            2 { View-ApplicationEvents }
+            3 { View-SecurityEvents }
+            4 { Search-EventLogs }
+            5 { Start-LogMonitor }
+            6 { Export-EventLogs }
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.TEXT_SECONDARY}Press any key to continue...${ANSI.RESET}"
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        Clear-ScreenWithBackground
+        
+    } while ($true)
+}
+
+function View-SystemEvents {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Retrieving recent system events...${ANSI.RESET}"
+    
+    try {
+        $events = Get-EventLog -LogName System -Newest 20 | Sort-Object TimeGenerated -Descending
+        
+        Write-Host ""
+        Write-Host "${ANSI.PURPLE}${ANSI.BOLD}RECENT SYSTEM EVENTS${ANSI.RESET}"
+        Write-Host "${ANSI.BORDER}────────────────────${ANSI.RESET}"
+        
+        $events | ForEach-Object {
+            $time = $_.TimeGenerated.ToString("MM/dd HH:mm")
+            $entryType = $_.EntryType
+            $eventId = $_.EventID
+            $source = $_.Source
+            $message = if ($_.Message.Length -gt 50) { $_.Message.Substring(0, 47) + "..." } else { $_.Message }
+            
+            # Color coding for event types
+            $typeColor = switch ($entryType) {
+                "Error" { $ANSI.RED }
+                "Warning" { $ANSI.ORANGE }
+                "SuccessAudit" { $ANSI.GREEN }
+                "FailureAudit" { $ANSI.PURPLE }
+                default { $ANSI.TEXT_SECONDARY }
+            }
+            
+            Write-Host " ${ANSI.TEXT_SECONDARY}$time${ANSI.RESET}".PadRight(14) -NoNewline
+            Write-Host " ${typeColor}$entryType${ANSI.RESET}".PadRight(15) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_PRIMARY}$source${ANSI.RESET}".PadRight(20) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_SECONDARY}ID:$eventId${ANSI.RESET}".PadRight(10) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_PRIMARY}$message${ANSI.RESET}"
+        }
+    } catch {
+        Write-Host "${ANSI.RED}× Error retrieving system events: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+function View-ApplicationEvents {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Retrieving recent application events...${ANSI.RESET}"
+    
+    try {
+        $events = Get-EventLog -LogName Application -Newest 20 | Sort-Object TimeGenerated -Descending
+        
+        Write-Host ""
+        Write-Host "${ANSI.PURPLE}${ANSI.BOLD}RECENT APPLICATION EVENTS${ANSI.RESET}"
+        Write-Host "${ANSI.BORDER}─────────────────────────${ANSI.RESET}"
+        
+        $events | ForEach-Object {
+            $time = $_.TimeGenerated.ToString("MM/dd HH:mm")
+            $entryType = $_.EntryType
+            $eventId = $_.EventID
+            $source = $_.Source
+            $message = if ($_.Message.Length -gt 50) { $_.Message.Substring(0, 47) + "..." } else { $_.Message }
+            
+            # Color coding for event types
+            $typeColor = switch ($entryType) {
+                "Error" { $ANSI.RED }
+                "Warning" { $ANSI.ORANGE }
+                "SuccessAudit" { $ANSI.GREEN }
+                "FailureAudit" { $ANSI.PURPLE }
+                default { $ANSI.TEXT_SECONDARY }
+            }
+            
+            Write-Host " ${ANSI.TEXT_SECONDARY}$time${ANSI.RESET}".PadRight(14) -NoNewline
+            Write-Host " ${typeColor}$entryType${ANSI.RESET}".PadRight(15) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_PRIMARY}$source${ANSI.RESET}".PadRight(20) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_SECONDARY}ID:$eventId${ANSI.RESET}".PadRight(10) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_PRIMARY}$message${ANSI.RESET}"
+        }
+    } catch {
+        Write-Host "${ANSI.RED}× Error retrieving application events: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+function View-SecurityEvents {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Retrieving recent security events...${ANSI.RESET}"
+    
+    # Check if we have access to security logs
+    try {
+        $hasAccess = $true
+        Get-EventLog -LogName Security -Newest 1 -ErrorAction Stop | Out-Null
+    } catch {
+        $hasAccess = $false
+    }
+    
+    if (-not $hasAccess) {
+        Write-Host "${ANSI.ORANGE}⚠ Access to security logs denied${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}Administrator privileges required to view security events${ANSI.RESET}"
+        return
+    }
+    
+    try {
+        $events = Get-EventLog -LogName Security -Newest 20 | Sort-Object TimeGenerated -Descending
+        
+        Write-Host ""
+        Write-Host "${ANSI.PURPLE}${ANSI.BOLD}RECENT SECURITY EVENTS${ANSI.RESET}"
+        Write-Host "${ANSI.BORDER}──────────────────────${ANSI.RESET}"
+        
+        $events | ForEach-Object {
+            $time = $_.TimeGenerated.ToString("MM/dd HH:mm")
+            $entryType = $_.EntryType
+            $eventId = $_.EventID
+            $source = $_.Source
+            $message = if ($_.Message.Length -gt 50) { $_.Message.Substring(0, 47) + "..." } else { $_.Message }
+            
+            # Color coding for event types
+            $typeColor = switch ($entryType) {
+                "Error" { $ANSI.RED }
+                "Warning" { $ANSI.ORANGE }
+                "SuccessAudit" { $ANSI.GREEN }
+                "FailureAudit" { $ANSI.PURPLE }
+                default { $ANSI.TEXT_SECONDARY }
+            }
+            
+            Write-Host " ${ANSI.TEXT_SECONDARY}$time${ANSI.RESET}".PadRight(14) -NoNewline
+            Write-Host " ${typeColor}$entryType${ANSI.RESET}".PadRight(15) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_PRIMARY}$source${ANSI.RESET}".PadRight(20) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_SECONDARY}ID:$eventId${ANSI.RESET}".PadRight(10) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_PRIMARY}$message${ANSI.RESET}"
+        }
+    } catch {
+        Write-Host "${ANSI.RED}× Error retrieving security events: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+function Search-EventLogs {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter search term:${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $searchTerm = Read-Host
+    
+    if ([string]::IsNullOrWhiteSpace($searchTerm)) {
+        Write-Host "${ANSI.RED}× Search term cannot be empty${ANSI.RESET}"
+        return
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Select log to search:${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}1${ANSI.RESET} ${ANSI.TEXT_PRIMARY}System${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}2${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Application${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}3${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Security${ANSI.RESET}"
+    Write-Host ""
+    
+    $logChoice = Read-ValidatedSubInput -Max 3
+    
+    $logName = switch ($logChoice) {
+        1 { "System" }
+        2 { "Application" }
+        3 { "Security" }
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Searching $logName logs for '$searchTerm'...${ANSI.RESET}"
+    
+    try {
+        $events = Get-EventLog -LogName $logName | Where-Object {
+            $_.Message -like "*$searchTerm*" -or
+            $_.Source -like "*$searchTerm*" -or
+            $_.UserName -like "*$searchTerm*"
+        } | Sort-Object TimeGenerated -Descending | Select-Object -First 20
+        
+        if ($events.Count -eq 0) {
+            Write-Host "${ANSI.TEXT_SECONDARY}No events found matching '$searchTerm'${ANSI.RESET}"
+            return
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.PURPLE}${ANSI.BOLD}SEARCH RESULTS ($($events.Count))${ANSI.RESET}"
+        Write-Host "${ANSI.BORDER}────────────────────────${ANSI.RESET}"
+        
+        $events | ForEach-Object {
+            $time = $_.TimeGenerated.ToString("MM/dd HH:mm")
+            $entryType = $_.EntryType
+            $eventId = $_.EventID
+            $source = $_.Source
+            $message = if ($_.Message.Length -gt 50) { $_.Message.Substring(0, 47) + "..." } else { $_.Message }
+            
+            # Color coding for event types
+            $typeColor = switch ($entryType) {
+                "Error" { $ANSI.RED }
+                "Warning" { $ANSI.ORANGE }
+                "SuccessAudit" { $ANSI.GREEN }
+                "FailureAudit" { $ANSI.PURPLE }
+                default { $ANSI.TEXT_SECONDARY }
+            }
+            
+            Write-Host " ${ANSI.TEXT_SECONDARY}$time${ANSI.RESET}".PadRight(14) -NoNewline
+            Write-Host " ${typeColor}$entryType${ANSI.RESET}".PadRight(15) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_PRIMARY}$source${ANSI.RESET}".PadRight(20) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_SECONDARY}ID:$eventId${ANSI.RESET}".PadRight(10) -NoNewline
+            Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+            Write-Host "${ANSI.TEXT_PRIMARY}$message${ANSI.RESET}"
+        }
+    } catch {
+        Write-Host "${ANSI.RED}× Error searching event logs: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+function Start-LogMonitor {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Select log to monitor:${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}1${ANSI.RESET} ${ANSI.TEXT_PRIMARY}System${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}2${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Application${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}3${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Security${ANSI.RESET}"
+    Write-Host ""
+    
+    $logChoice = Read-ValidatedSubInput -Max 3
+    
+    $logName = switch ($logChoice) {
+        1 { "System" }
+        2 { "Application" }
+        3 { "Security" }
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.ORANGE}⚠ Real-time log monitoring starting...${ANSI.RESET}"
+    Write-Host "${ANSI.TEXT_SECONDARY}Press Ctrl+C to stop monitoring${ANSI.RESET}"
+    Write-Host ""
+    
+    try {
+        Write-Host "${ANSI.PURPLE}${ANSI.BOLD}REAL-TIME $logName LOG MONITOR${ANSI.RESET}"
+        Write-Host "${ANSI.BORDER}──────────────────────────────${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}Time${ANSI.RESET} ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} ${ANSI.PURPLE}Type${ANSI.RESET} ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} ${ANSI.PURPLE}Source${ANSI.RESET} ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} ${ANSI.PURPLE}Message${ANSI.RESET}"
+        Write-Host " ${ANSI.BORDER}────────────────────────────────────────────${ANSI.RESET}"
+        
+        # Get the latest event to track from
+        $latestEvent = Get-EventLog -LogName $logName -Newest 1
+        $lastEventId = if ($latestEvent) { $latestEvent.Index } else { 0 }
+        
+        # Monitor for 30 seconds
+        $endTime = (Get-Date).AddSeconds(30)
+        
+        while ((Get-Date) -lt $endTime) {
+            $newEvents = Get-EventLog -LogName $logName -Newest 5 | Where-Object { $_.Index -gt $lastEventId } | Sort-Object TimeGenerated
+            
+            foreach ($event in $newEvents) {
+                $time = $event.TimeGenerated.ToString("HH:mm:ss")
+                $entryType = $event.EntryType
+                $source = if ($event.Source.Length -gt 15) { $event.Source.Substring(0, 12) + "..." } else { $event.Source }
+                $message = if ($event.Message.Length -gt 30) { $event.Message.Substring(0, 27) + "..." } else { $event.Message }
+                
+                # Color coding for event types
+                $typeColor = switch ($entryType) {
+                    "Error" { $ANSI.RED }
+                    "Warning" { $ANSI.ORANGE }
+                    "SuccessAudit" { $ANSI.GREEN }
+                    "FailureAudit" { $ANSI.PURPLE }
+                    default { $ANSI.TEXT_SECONDARY }
+                }
+                
+                Write-Host " ${ANSI.TEXT_SECONDARY}$time${ANSI.RESET}".PadRight(10) -NoNewline
+                Write-Host " ${typeColor}$entryType${ANSI.RESET}".PadRight(12) -NoNewline
+                Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+                Write-Host "${ANSI.TEXT_PRIMARY}$source${ANSI.RESET}".PadRight(18) -NoNewline
+                Write-Host " ${ANSI.TEXT_SECONDARY}│${ANSI.RESET} " -NoNewline
+                Write-Host "${ANSI.TEXT_PRIMARY}$message${ANSI.RESET}"
+                
+                $lastEventId = $event.Index
+            }
+            
+            Start-Sleep -Milliseconds 1000
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.TEXT_SECONDARY}Monitoring stopped after 30 seconds${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}For continuous monitoring, run this function in a dedicated session${ANSI.RESET}"
+    } catch {
+        Write-Host "${ANSI.RED}× Error monitoring logs: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+function Export-EventLogs {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Select log to export:${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}1${ANSI.RESET} ${ANSI.TEXT_PRIMARY}System${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}2${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Application${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}3${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Security${ANSI.RESET}"
+    Write-Host ""
+    
+    $logChoice = Read-ValidatedSubInput -Max 3
+    
+    $logName = switch ($logChoice) {
+        1 { "System" }
+        2 { "Application" }
+        3 { "Security" }
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter number of recent events to export:${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $countInput = Read-Host
+    
+    if (-not ($countInput -match "^\d+$") -or [int]$countInput -le 0) {
+        Write-Host "${ANSI.RED}× Invalid count. Must be a positive number${ANSI.RESET}"
+        return
+    }
+    
+    [int]$count = [int]$countInput
+    
+    if ($count -gt 10000) {
+        $confirm = Confirm-KnouxAction "Exporting $count events may create a large file. Continue?"
+        if (-not $confirm) {
+            Write-Host "${ANSI.TEXT_SECONDARY}Cancelled export${ANSI.RESET}"
+            return
+        }
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter export format:${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}1${ANSI.RESET} ${ANSI.TEXT_PRIMARY}CSV${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}2${ANSI.RESET} ${ANSI.TEXT_PRIMARY}XML${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}3${ANSI.RESET} ${ANSI.TEXT_PRIMARY}TXT${ANSI.RESET}"
+    Write-Host ""
+    
+    $formatChoice = Read-ValidatedSubInput -Max 3
+    
+    $extension = switch ($formatChoice) {
+        1 { "csv" }
+        2 { "xml" }
+        3 { "txt" }
+    }
+    
+    try {
+        Write-Host ""
+        Write-Host "${ANSI.TEXT_SECONDARY}Exporting $count recent $logName events to $extension format...${ANSI.RESET}"
+        
+        # Create outputs directory if it doesn't exist
+        $outputDir = Join-Path $PSScriptRoot "../../outputs"
+        if (!(Test-Path $outputDir)) {
+            New-Item -ItemType Directory -Path $outputDir | Out-Null
+        }
+        
+        $fileName = "EventLog_${logName}_$(Get-Date -Format 'yyyyMMdd_HHmmss').$extension"
+        $filePath = Join-Path $outputDir $fileName
+        
+        $events = Get-EventLog -LogName $logName -Newest $count | Sort-Object TimeGenerated
+        
+        switch ($formatChoice) {
+            1 {
+                # CSV Export
+                $events | Select-Object TimeGenerated, EntryType, Source, EventID, Message | 
+                Export-Csv -Path $filePath -NoTypeInformation -Encoding UTF8
+            }
+            2 {
+                # XML Export
+                $events | Export-Clixml -Path $filePath
+            }
+            3 {
+                # TXT Export
+                $events | ForEach-Object {
+                    "Time: $($_.TimeGenerated)`nType: $($_.EntryType)`nSource: $($_.Source)`nEvent ID: $($_.EventID)`nMessage: $($_.Message)`n$('-' * 50)"
+                } | Out-File -FilePath $filePath -Encoding UTF8
+            }
+        }
+        
+        Write-Host "${ANSI.GREEN}✓ Export completed successfully${ANSI.RESET}"
+        Write-Host "${ANSI.GREEN}✓ File saved to: $filePath${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}Entry count: $($events.Count)${ANSI.RESET}"
+    } catch {
+        Write-Host "${ANSI.RED}× Error exporting event logs: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+Export-ModuleMember -Function @('Show-EventLogViewer')
+```
+
+✅ Logs & Monitoring module created
+
+---
+## 🐳 CONTAINERS & VM MODULE
+
+📄 Creating `modules/mod.containers/docker.helpers.ps1`:
+
+```powershell
+<#
+.SYNOPSIS
+    Knoux Spectre Docker Helpers
+.DESCRIPTION
+    Helper functions for Docker container management
+.AUTHOR
+    Knoux Systems
+.VERSION
+    1.0.0
+#>
+
+function Show-DockerHelpers {
+    [CmdletBinding()]
+    param()
+    
+    Clear-ScreenWithBackground
+    Write-Host "${ANSI.BG_DARK}${ANSI.PURPLE}${ANSI.BOLD}🐳 DOCKER HELPERS${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}────────────────────────────────${ANSI.RESET}"
+    Write-Host ""
+    
+    # Check if Docker is installed
+    $dockerInstalled = $null -ne (Get-Command docker -ErrorAction SilentlyContinue)
+    
+    if (-not $dockerInstalled) {
+        Write-Host "${ANSI.ORANGE}⚠ Docker is not installed or not in PATH${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}Download Docker Desktop from https://www.docker.com/products/docker-desktop${ANSI.RESET}"
+        Write-Host ""
+        Write-Host "${ANSI.RED}0${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Back to Menu${ANSI.RESET}"
+        Write-Host ""
+        
+        Read-ValidatedSubInput -Max 0
+        return
+    }
+    
+    # Check if Docker daemon is running
+    try {
+        $dockerVersion = docker --version 2>$null
+        Write-Host "${ANSI.GREEN}✓ Docker detected: $dockerVersion${ANSI.RESET}"
+    } catch {
+        Write-Host "${ANSI.ORANGE}⚠ Docker is installed but daemon may not be running${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}Start Docker Desktop to enable full functionality${ANSI.RESET}"
+    }
+    
+    Write-Host ""
+    
+    do {
+        Write-Host "${ANSI.TEXT_SECONDARY}Docker Helper Options:${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}1${ANSI.RESET} ${ANSI.TEXT_PRIMARY}List Containers${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}2${ANSI.RESET} ${ANSI.TEXT_PRIMARY}List Images${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}3${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Start Container${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}4${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Stop Container${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}5${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Remove Container${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}6${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Pull Image${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}7${

@@ -1,0 +1,467 @@
+## 📄 modules/mod.network/port.scanner.ps1 (续)
+
+```powershell
+        Write-Host "${ANSI.BORDER}──────────────${ANSI.RESET}"
+        
+        $udpEndpoints | Sort-Object LocalPort | ForEach-Object {
+            Write-Host " ${ANSI.GREEN}●${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Port $($_.LocalPort)${ANSI.RESET} ${ANSI.TEXT_SECONDARY}($($_.OwningProcess))${ANSI.RESET}"
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.TEXT_SECONDARY}Total TCP ports: $($tcpConnections.Count)${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}Total UDP ports: $($udpEndpoints.Count)${ANSI.RESET}"
+        
+    } catch {
+        Write-Host "${ANSI.RED}× Error scanning local ports: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+function Scan-RemoteHost {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter remote host IP or hostname:${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $hostname = Read-Host
+    
+    if ([string]::IsNullOrWhiteSpace($hostname)) {
+        Write-Host "${ANSI.RED}× Hostname cannot be empty${ANSI.RESET}"
+        return
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter port range (e.g., 1-1000 or 80,443,8080):${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $portRange = Read-Host
+    
+    if ([string]::IsNullOrWhiteSpace($portRange)) {
+        Write-Host "${ANSI.RED}× Port range cannot be empty${ANSI.RESET}"
+        return
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Scanning $hostname on ports $portRange...${ANSI.RESET}"
+    
+    # Parse port range
+    $ports = @()
+    if ($portRange -match "^(\d+)-(\d+)$") {
+        # Range format
+        $startPort = [int]$matches[1]
+        $endPort = [int]$matches[2]
+        $ports = $startPort..$endPort
+    } elseif ($portRange -match "^[\d,]+$") {
+        # Comma-separated format
+        $ports = $portRange -split "," | ForEach-Object { [int]$_ }
+    } else {
+        Write-Host "${ANSI.RED}× Invalid port format. Use range (1-1000) or comma-separated (80,443,8080)${ANSI.RESET}"
+        return
+    }
+    
+    $openPorts = @()
+    $timeout = 100  # ms
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Progress: 0%${ANSI.RESET}" -NoNewline
+    $progress = 0
+    $totalPorts = $ports.Count
+    
+    foreach ($port in $ports) {
+        # Update progress
+        $progress++
+        $percent = [math]::Round(($progress / $totalPorts) * 100)
+        Write-Host "`r${ANSI.TEXT_SECONDARY}Progress: $percent%${ANSI.RESET}" -NoNewline
+        
+        try {
+            $tcpClient = New-Object System.Net.Sockets.TcpClient
+            $connectAsyncResult = $tcpClient.BeginConnect($hostname, $port, $null, $null)
+            $success = $connectAsyncResult.AsyncWaitHandle.WaitOne($timeout, $false)
+            
+            if ($success) {
+                $tcpClient.EndConnect($connectAsyncResult)
+                $tcpClient.Close()
+                $openPorts += $port
+                Write-Host "`n ${ANSI.GREEN}●${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Port $port is OPEN${ANSI.RESET}"
+            } else {
+                $tcpClient.Close()
+            }
+        } catch {
+            # Port is closed or filtered
+        }
+    }
+    
+    Write-Host ""
+    Write-Host ""
+    Write-Host "${ANSI.GREEN}✓ Scan completed${ANSI.RESET}"
+    Write-Host "${ANSI.TEXT_SECONDARY}Open ports found: $($openPorts.Count)${ANSI.RESET}"
+    
+    if ($openPorts.Count -gt 0) {
+        Write-Host ""
+        Write-Host "${ANSI.PURPLE}${ANSI.BOLD}OPEN PORTS${ANSI.RESET}"
+        Write-Host "${ANSI.BORDER}──────────${ANSI.RESET}"
+        $openPorts | Sort-Object | ForEach-Object {
+            Write-Host " ${ANSI.GREEN}●${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Port $_${ANSI.RESET}"
+        }
+    }
+}
+
+function Quick-CommonPortsScan {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter target IP or hostname:${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $target = Read-Host
+    
+    if ([string]::IsNullOrWhiteSpace($target)) {
+        Write-Host "${ANSI.RED}× Target cannot be empty${ANSI.RESET}"
+        return
+    }
+    
+    # Common ports to scan
+    $commonPorts = @(
+        21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 443, 993, 995,
+        1723, 3306, 3389, 5900, 8080, 8443
+    )
+    
+    $commonPortNames = @{
+        21 = "FTP"; 22 = "SSH"; 23 = "Telnet"; 25 = "SMTP"; 53 = "DNS"
+        80 = "HTTP"; 110 = "POP3"; 111 = "RPCBind"; 135 = "RPC"; 139 = "NetBIOS"
+        143 = "IMAP"; 443 = "HTTPS"; 993 = "IMAPS"; 995 = "POP3S"
+        1723 = "PPTP"; 3306 = "MySQL"; 3389 = "RDP"; 5900 = "VNC"; 8080 = "HTTP-Alt"; 8443 = "HTTPS-Alt"
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Scanning common ports on $target...${ANSI.RESET}"
+    
+    $openPorts = @()
+    $timeout = 100  # ms
+    
+    foreach ($port in $commonPorts) {
+        Write-Host "${ANSI.TEXT_SECONDARY}Checking port $port ($($commonPortNames[$port]))...${ANSI.RESET}" -NoNewline
+        
+        try {
+            $tcpClient = New-Object System.Net.Sockets.TcpClient
+            $connectAsyncResult = $tcpClient.BeginConnect($target, $port, $null, $null)
+            $success = $connectAsyncResult.AsyncWaitHandle.WaitOne($timeout, $false)
+            
+            if ($success) {
+                $tcpClient.EndConnect($connectAsyncResult)
+                $tcpClient.Close()
+                $openPorts += $port
+                Write-Host " ${ANSI.GREEN}OPEN${ANSI.RESET}"
+            } else {
+                $tcpClient.Close()
+                Write-Host " ${ANSI.RED}CLOSED${ANSI.RESET}"
+            }
+        } catch {
+            Write-Host " ${ANSI.RED}FILTERED${ANSI.RESET}"
+        }
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.GREEN}✓ Quick scan completed${ANSI.RESET}"
+    
+    if ($openPorts.Count -gt 0) {
+        Write-Host ""
+        Write-Host "${ANSI.PURPLE}${ANSI.BOLD}OPEN PORTS DETECTED${ANSI.RESET}"
+        Write-Host "${ANSI.BORDER}────────────────────${ANSI.RESET}"
+        $openPorts | Sort-Object | ForEach-Object {
+            $serviceName = $commonPortNames[$_]
+            Write-Host " ${ANSI.GREEN}●${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Port $_ ($serviceName)${ANSI.RESET}"
+        }
+    } else {
+        Write-Host "${ANSI.TEXT_SECONDARY}No common ports are open${ANSI.RESET}"
+    }
+}
+
+function Custom-PortRangeScan {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter target IP or hostname:${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $target = Read-Host
+    
+    if ([string]::IsNullOrWhiteSpace($target)) {
+        Write-Host "${ANSI.RED}× Target cannot be empty${ANSI.RESET}"
+        return
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter start port:${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $startPort = Read-Host
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter end port:${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $endPort = Read-Host
+    
+    if (-not ($startPort -match "^\d+$" -and $endPort -match "^\d+$")) {
+        Write-Host "${ANSI.RED}× Ports must be numeric${ANSI.RESET}"
+        return
+    }
+    
+    [int]$start = [int]$startPort
+    [int]$end = [int]$endPort
+    
+    if ($start -gt $end) {
+        Write-Host "${ANSI.RED}× Start port must be less than or equal to end port${ANSI.RESET}"
+        return
+    }
+    
+    if (($end - $start) -gt 10000) {
+        $confirm = Confirm-KnouxAction "Scanning over 10,000 ports may take a while. Continue?"
+        if (-not $confirm) {
+            Write-Host "${ANSI.TEXT_SECONDARY}Cancelled large port scan${ANSI.RESET}"
+            return
+        }
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Scanning ports $start-$end on $target...${ANSI.RESET}"
+    
+    $openPorts = @()
+    $timeout = 50  # ms for large scans
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Progress: 0%${ANSI.RESET}" -NoNewline
+    $progress = 0
+    $totalPorts = ($end - $start) + 1
+    
+    for ($port = $start; $port -le $end; $port++) {
+        # Update progress
+        $progress++
+        $percent = [math]::Round(($progress / $totalPorts) * 100)
+        Write-Host "`r${ANSI.TEXT_SECONDARY}Progress: $percent%${ANSI.RESET}" -NoNewline
+        
+        try {
+            $tcpClient = New-Object System.Net.Sockets.TcpClient
+            $connectAsyncResult = $tcpClient.BeginConnect($target, $port, $null, $null)
+            $success = $connectAsyncResult.AsyncWaitHandle.WaitOne($timeout, $false)
+            
+            if ($success) {
+                $tcpClient.EndConnect($connectAsyncResult)
+                $tcpClient.Close()
+                $openPorts += $port
+            } else {
+                $tcpClient.Close()
+            }
+        } catch {
+            # Port is closed or filtered
+        }
+    }
+    
+    Write-Host ""
+    Write-Host ""
+    Write-Host "${ANSI.GREEN}✓ Custom port scan completed${ANSI.RESET}"
+    Write-Host "${ANSI.TEXT_SECONDARY}Open ports found: $($openPorts.Count)${ANSI.RESET}"
+    
+    if ($openPorts.Count -gt 0) {
+        Write-Host ""
+        Write-Host "${ANSI.PURPLE}${ANSI.BOLD}OPEN PORTS${ANSI.RESET}"
+        Write-Host "${ANSI.BORDER}──────────${ANSI.RESET}"
+        $openPorts | Sort-Object | ForEach-Object {
+            Write-Host " ${ANSI.GREEN}●${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Port $_${ANSI.RESET}"
+        }
+    }
+}
+
+Export-ModuleMember -Function @('Invoke-PortScanner')
+```
+
+✅ Network Tools module created
+
+---
+## 🛡 SECURITY & PENTEST MODULE
+
+📄 Creating `modules/mod.security/hash.toolkit.ps1`:
+
+```powershell
+<#
+.SYNOPSIS
+    Knoux Spectre Hash Toolkit
+.DESCRIPTION
+    Generate and compare cryptographic hashes
+.AUTHOR
+    Knoux Systems
+.VERSION
+    1.0.0
+#>
+
+function Show-HashToolkit {
+    [CmdletBinding()]
+    param()
+    
+    Clear-ScreenWithBackground
+    Write-Host "${ANSI.BG_DARK}${ANSI.PURPLE}${ANSI.BOLD}🛡 HASH TOOLKIT${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}───────────────────────────────${ANSI.RESET}"
+    Write-Host ""
+    
+    do {
+        Write-Host "${ANSI.TEXT_SECONDARY}Hash Toolkit Options:${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}1${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Generate File Hash${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}2${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Generate Text Hash${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}3${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Compare File Hashes${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}4${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Verify File Integrity${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}5${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Hash Database Lookup${ANSI.RESET}"
+        Write-Host ""
+        Write-Host " ${ANSI.RED}0${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Back to Menu${ANSI.RESET}"
+        Write-Host ""
+        
+        $choice = Read-ValidatedSubInput -Max 5
+        
+        switch ($choice) {
+            0 { return }
+            1 { Generate-FileHash }
+            2 { Generate-TextHash }
+            3 { Compare-FileHashes }
+            4 { Verify-FileIntegrity }
+            5 { Lookup-HashDatabase }
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.TEXT_SECONDARY}Press any key to continue...${ANSI.RESET}"
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        Clear-ScreenWithBackground
+        
+    } while ($true)
+}
+
+function Generate-FileHash {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter file path:${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $filePath = Read-Host
+    
+    if ([string]::IsNullOrWhiteSpace($filePath)) {
+        Write-Host "${ANSI.RED}× File path cannot be empty${ANSI.RESET}"
+        return
+    }
+    
+    if (-not (Test-Path $filePath)) {
+        Write-Host "${ANSI.RED}× File not found: $filePath${ANSI.RESET}"
+        return
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Select hash algorithm:${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}1${ANSI.RESET} ${ANSI.TEXT_PRIMARY}MD5${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}2${ANSI.RESET} ${ANSI.TEXT_PRIMARY}SHA1${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}3${ANSI.RESET} ${ANSI.TEXT_PRIMARY}SHA256${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}4${ANSI.RESET} ${ANSI.TEXT_PRIMARY}SHA512${ANSI.RESET}"
+    Write-Host ""
+    
+    $algoChoice = Read-ValidatedSubInput -Max 4
+    
+    $algorithm = switch ($algoChoice) {
+        1 { "MD5" }
+        2 { "SHA1" }
+        3 { "SHA256" }
+        4 { "SHA512" }
+        default { "SHA256" }
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Generating $algorithm hash for '$filePath'...${ANSI.RESET}"
+    
+    try {
+        $hash = Get-FileHash -Path $filePath -Algorithm $algorithm
+        Write-Host ""
+        Write-Host "${ANSI.PURPLE}${ANSI.BOLD}FILE HASH${ANSI.RESET}"
+        Write-Host "${ANSI.BORDER}──────────${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}Algorithm:${ANSI.RESET} ${ANSI.TEXT_PRIMARY}$($hash.Algorithm)${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}Hash:${ANSI.RESET} ${ANSI.TEXT_PRIMARY}$($hash.Hash)${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}File:${ANSI.RESET} ${ANSI.TEXT_PRIMARY}$($hash.Path)${ANSI.RESET}"
+        
+        # Option to save hash
+        $saveHash = Confirm-KnouxAction "Save hash to file?"
+        if ($saveHash) {
+            $hashFileName = "$(Split-Path $filePath -Leaf)_$($hash.Algorithm)_$(Get-Date -Format 'yyyyMMdd_HHmmss').hash"
+            $hashFilePath = Join-Path (Split-Path $filePath -Parent) $hashFileName
+            
+            "# $($hash.Algorithm) hash for $($hash.Path)`n# Generated on $(Get-Date)`n$($hash.Hash)" | Out-File -FilePath $hashFilePath -Encoding UTF8
+            Write-Host "${ANSI.GREEN}✓ Hash saved to: $hashFilePath${ANSI.RESET}"
+        }
+    } catch {
+        Write-Host "${ANSI.RED}× Error generating hash: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+function Generate-TextHash {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter text to hash:${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $text = Read-Host
+    
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        Write-Host "${ANSI.RED}× Text cannot be empty${ANSI.RESET}"
+        return
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Select hash algorithm:${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}1${ANSI.RESET} ${ANSI.TEXT_PRIMARY}MD5${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}2${ANSI.RESET} ${ANSI.TEXT_PRIMARY}SHA1${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}3${ANSI.RESET} ${ANSI.TEXT_PRIMARY}SHA256${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}4${ANSI.RESET} ${ANSI.TEXT_PRIMARY}SHA512${ANSI.RESET}"
+    Write-Host ""
+    
+    $algoChoice = Read-ValidatedSubInput -Max 4
+    
+    $algorithm = switch ($algoChoice) {
+        1 { "MD5" }
+        2 { "SHA1" }
+        3 { "SHA256" }
+        4 { "SHA512" }
+        default { "SHA256" }
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Generating $algorithm hash for text...${ANSI.RESET}"
+    
+    try {
+        # Convert text to bytes
+        $bytes = [Text.Encoding]::UTF8.GetBytes($text)
+        
+        # Create hash object
+        $hashAlgorithm = [Security.Cryptography.HashAlgorithm]::Create($algorithm)
+        $hashBytes = $hashAlgorithm.ComputeHash($bytes)
+        $hashString = -join ($hashBytes | ForEach-Object { "{0:x2}" -f $_ })
+        
+        Write-Host ""
+        Write-Host "${ANSI.PURPLE}${ANSI.BOLD}TEXT HASH${ANSI.RESET}"
+        Write-Host "${ANSI.BORDER}──────────${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}Algorithm:${ANSI.RESET} ${ANSI.TEXT_PRIMARY}$algorithm${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}Hash:${ANSI.RESET} ${ANSI.TEXT_PRIMARY}$hashString${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}Text:${ANSI.RESET} ${ANSI.TEXT_PRIMARY}$text${ANSI.RESET}"
+    } catch {
+        Write-Host "${ANSI.RED}× Error generating hash: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+function Compare-FileHashes {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter first file path:${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $file1Path = Read-Host
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter second file path:${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $file2Path = Read-Host
+    
+    if ([string]::IsNullOrWhiteSpace($file1Path) -or [string]::IsNullOrWhiteSpace($file2Path)) {
+        Write-Host "${ANSI.RED}× File paths cannot be empty${ANSI.RESET}"
+        return
+    }
+    
+    if (-not (Test-Path $file1Path)) {
+        Write-Host "${ANSI.RED}× First file not found: $file1Path${ANSI.RESET}"
+        return
+    }
+    
+    if (-not (Test-Path $file2Path)) {
+        Write-Host "${ANSI.RED}× Second file not found: $file2Path${ANSI.RESET}"
+        return
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Select hash algorithm:${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}1${ANSI.RESET} ${ANSI.TEXT_PRIMARY}MD5${ANSI.RESET}"
+    Write-Host " ${ANSI.PURPLE}2${ANSI.RESET} ${ANSI.TEXT_PRIMARY}SHA1${ANSI.RESET}
+```

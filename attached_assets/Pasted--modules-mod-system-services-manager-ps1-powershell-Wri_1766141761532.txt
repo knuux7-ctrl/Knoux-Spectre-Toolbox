@@ -1,0 +1,302 @@
+## 📄 modules/mod.system/services.manager.ps1 (续)
+
+```powershell
+        Write-Host "${ANSI.RED}× Error restarting service: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+Export-ModuleMember -Function @('Show-ServicesManager')
+```
+
+✅ System & Windows module created
+
+---
+## 💾 DISK & STORAGE MODULE
+
+📄 Creating `modules/mod.disk/cleanup.utility.ps1`:
+
+```powershell
+<#
+.SYNOPSIS
+    Knoux Spectre Disk Cleanup Utility
+.DESCRIPTION
+    Clean up temporary files and optimize disk space
+.AUTHOR
+    Knoux Systems
+.VERSION
+    1.0.0
+#>
+
+function Invoke-DiskCleanup {
+    [CmdletBinding()]
+    param()
+    
+    Clear-ScreenWithBackground
+    Write-Host "${ANSI.BG_DARK}${ANSI.PURPLE}${ANSI.BOLD}💾 DISK CLEANUP UTILITY${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}────────────────────────────────${ANSI.RESET}"
+    Write-Host ""
+    
+    # Check for admin privileges
+    if (-not (Test-AdminPrivilege)) {
+        Write-Host "${ANSI.ORANGE}⚠ Administrator privileges recommended for full cleanup${ANSI.RESET}"
+        Write-Host ""
+    }
+    
+    do {
+        Write-Host "${ANSI.TEXT_SECONDARY}Cleanup Options:${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}1${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Clean Temporary Files${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}2${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Clean Recycle Bin${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}3${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Clean Windows Update Files${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}4${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Clean Browser Cache${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}5${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Perform Full Cleanup${ANSI.RESET}"
+        Write-Host ""
+        Write-Host " ${ANSI.RED}0${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Back to Menu${ANSI.RESET}"
+        Write-Host ""
+        
+        $choice = Read-ValidatedSubInput -Max 5
+        
+        switch ($choice) {
+            0 { return }
+            1 { Clean-TempFiles }
+            2 { Clean-RecycleBin }
+            3 { Clean-WindowsUpdateFiles }
+            4 { Clean-BrowserCache }
+            5 { Perform-FullCleanup }
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.TEXT_SECONDARY}Press any key to continue...${ANSI.RESET}"
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        Clear-ScreenWithBackground
+        
+    } while ($true)
+}
+
+function Clean-TempFiles {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Cleaning temporary files...${ANSI.RESET}"
+    
+    $tempPaths = @(
+        "$env:TEMP",
+        "$env:SystemRoot\Temp",
+        "$env:LOCALAPPDATA\Temp"
+    )
+    
+    $totalFreed = 0
+    
+    foreach ($path in $tempPaths) {
+        if (Test-Path $path) {
+            Write-Host "${ANSI.TEXT_SECONDARY} Cleaning $path...${ANSI.RESET}" -NoNewline
+            
+            try {
+                $beforeSize = (Get-ChildItem -Path $path -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+                Remove-Item -Path "$path\*" -Recurse -Force -ErrorAction SilentlyContinue
+                $afterSize = (Get-ChildItem -Path $path -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+                
+                $freed = $beforeSize - $afterSize
+                $totalFreed += $freed
+                
+                Write-Host " ${ANSI.GREEN}FREED $(Format-KnouxBytes $freed)${ANSI.RESET}"
+            } catch {
+                Write-Host " ${ANSI.RED}FAILED${ANSI.RESET}"
+            }
+        }
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.GREEN}✓ Freed $(Format-KnouxBytes $totalFreed) from temporary files${ANSI.RESET}"
+}
+
+function Clean-RecycleBin {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Emptying Recycle Bin...${ANSI.RESET}" -NoNewline
+    
+    try {
+        # Get size before emptying
+        $recycleBinSize = (Get-ChildItem -Path "C:\$Recycle.Bin" -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+        
+        # Empty recycle bin
+        Clear-RecycleBin -Force -ErrorAction Stop
+        
+        Write-Host " ${ANSI.GREEN}DONE${ANSI.RESET}"
+        Write-Host "${ANSI.GREEN}✓ Freed $(Format-KnouxBytes $recycleBinSize) from Recycle Bin${ANSI.RESET}"
+    } catch {
+        Write-Host " ${ANSI.RED}FAILED${ANSI.RESET}"
+        Write-Host "${ANSI.RED}× Error emptying Recycle Bin: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+function Clean-WindowsUpdateFiles {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Cleaning Windows Update files...${ANSI.RESET}"
+    
+    if (-not (Test-AdminPrivilege)) {
+        Write-Host "${ANSI.ORANGE}⚠ Administrator privileges required for this operation${ANSI.RESET}"
+        return
+    }
+    
+    Write-Host "${ANSI.TEXT_SECONDARY} Running Dism cleanup...${ANSI.RESET}" -NoNewline
+    try {
+        $dismResult = dism.exe /online /Cleanup-Image /StartComponentCleanup 2>&1
+        Write-Host " ${ANSI.GREEN}DONE${ANSI.RESET}"
+    } catch {
+        Write-Host " ${ANSI.RED}FAILED${ANSI.RESET}"
+    }
+    
+    Write-Host "${ANSI.TEXT_SECONDARY} Running Windows Update cleanup...${ANSI.RESET}" -NoNewline
+    try {
+        $wuResult = Start-Process -FilePath "C:\Windows\System32\cleanmgr.exe" -ArgumentList "/sagerun:1" -Wait -PassThru
+        Write-Host " ${ANSI.GREEN}DONE${ANSI.RESET}"
+    } catch {
+        Write-Host " ${ANSI.RED}FAILED${ANSI.RESET}"
+    }
+    
+    Write-Host "${ANSI.GREEN}✓ Windows Update files cleanup completed${ANSI.RESET}"
+}
+
+function Clean-BrowserCache {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Cleaning browser cache...${ANSI.RESET}"
+    
+    $browserPaths = @(
+        # Chrome
+        "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\Cache",
+        "$env:LOCALAPPDATA\Google\Chrome\User Data\Default\CachedImagesAndVideos",
+        # Firefox
+        "$env:APPDATA\Mozilla\Firefox\Profiles\*.default-release\Cache",
+        "$env:APPDATA\Mozilla\Firefox\Profiles\*.default\Cache",
+        # Edge
+        "$env:LOCALAPPDATA\Microsoft\Edge\User Data\Default\Cache"
+    )
+    
+    $totalFreed = 0
+    
+    foreach ($path in $browserPaths) {
+        if (Test-Path $path) {
+            Write-Host "${ANSI.TEXT_SECONDARY} Cleaning $path...${ANSI.RESET}" -NoNewline
+            
+            try {
+                $beforeSize = (Get-ChildItem -Path $path -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+                Remove-Item -Path "$path\*" -Recurse -Force -ErrorAction SilentlyContinue
+                $afterSize = (Get-ChildItem -Path $path -Recurse -Force -ErrorAction SilentlyContinue | Measure-Object -Property Length -Sum).Sum
+                
+                $freed = $beforeSize - $afterSize
+                $totalFreed += $freed
+                
+                Write-Host " ${ANSI.GREEN}FREED $(Format-KnouxBytes $freed)${ANSI.RESET}"
+            } catch {
+                Write-Host " ${ANSI.RED}FAILED${ANSI.RESET}"
+            }
+        }
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.GREEN}✓ Freed $(Format-KnouxBytes $totalFreed) from browser cache${ANSI.RESET}"
+}
+
+function Perform-FullCleanup {
+    Write-Host ""
+    Write-Host "${ANSI.ORANGE}? This will perform a full system cleanup${ANSI.RESET}"
+    
+    $confirm = Confirm-KnouxAction "Continue with full cleanup?" "N"
+    
+    if (-not $confirm) {
+        Write-Host "${ANSI.TEXT_SECONDARY}Cancelled full cleanup${ANSI.RESET}"
+        return
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Starting full cleanup...${ANSI.RESET}"
+    
+    Clean-TempFiles
+    Clean-RecycleBin
+    Clean-BrowserCache
+    
+    if (Test-AdminPrivilege) {
+        Clean-WindowsUpdateFiles
+    } else {
+        Write-Host "${ANSI.ORANGE}⚠ Skipping Windows Update files cleanup (requires admin)${ANSI.RESET}"
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.GREEN}✓ Full cleanup completed!${ANSI.RESET}"
+}
+
+Export-ModuleMember -Function @('Invoke-DiskCleanup')
+```
+
+✅ Disk & Storage module created
+
+---
+## 🌐 NETWORK TOOLS MODULE
+
+📄 Creating `modules/mod.network/port.scanner.ps1`:
+
+```powershell
+<#
+.SYNOPSIS
+    Knoux Spectre Network Port Scanner
+.DESCRIPTION
+    Scan network ports for open connections
+.AUTHOR
+    Knoux Systems
+.VERSION
+    1.0.0
+#>
+
+function Invoke-PortScanner {
+    [CmdletBinding()]
+    param()
+    
+    Clear-ScreenWithBackground
+    Write-Host "${ANSI.BG_DARK}${ANSI.PURPLE}${ANSI.BOLD}🌐 PORT SCANNER${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}───────────────────────────────${ANSI.RESET}"
+    Write-Host ""
+    
+    do {
+        Write-Host "${ANSI.TEXT_SECONDARY}Port Scanner Options:${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}1${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Scan Local Machine Ports${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}2${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Scan Remote Host Ports${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}3${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Quick Common Ports Scan${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}4${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Custom Port Range Scan${ANSI.RESET}"
+        Write-Host ""
+        Write-Host " ${ANSI.RED}0${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Back to Menu${ANSI.RESET}"
+        Write-Host ""
+        
+        $choice = Read-ValidatedSubInput -Max 4
+        
+        switch ($choice) {
+            0 { return }
+            1 { Scan-LocalPorts }
+            2 { Scan-RemoteHost }
+            3 { Quick-CommonPortsScan }
+            4 { Custom-PortRangeScan }
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.TEXT_SECONDARY}Press any key to continue...${ANSI.RESET}"
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        Clear-ScreenWithBackground
+        
+    } while ($true)
+}
+
+function Scan-LocalPorts {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Scanning local machine ports...${ANSI.RESET}"
+    
+    try {
+        $tcpConnections = Get-NetTCPConnection | Where-Object {$_.State -eq "Listen"}
+        $udpEndpoints = Get-NetUDPEndpoint
+        
+        Write-Host ""
+        Write-Host "${ANSI.PURPLE}${ANSI.BOLD}OPEN TCP PORTS${ANSI.RESET}"
+        Write-Host "${ANSI.BORDER}──────────────${ANSI.RESET}"
+        
+        $tcpConnections | Sort-Object LocalPort | ForEach-Object {
+            Write-Host " ${ANSI.GREEN}●${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Port $($_.LocalPort)${ANSI.RESET} ${ANSI.TEXT_SECONDARY}($($_.OwningProcess))${ANSI.RESET}"
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.PURPLE}${ANSI.BOLD}OPEN UDP PORTS${ANSI.RESET}
+```

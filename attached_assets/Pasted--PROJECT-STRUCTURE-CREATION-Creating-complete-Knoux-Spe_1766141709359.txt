@@ -1,0 +1,946 @@
+## 📁 PROJECT STRUCTURE CREATION
+
+📂 Creating complete Knoux Spectre Toolbox folder structure:
+
+```powershell
+# Create main project directory
+$projectRoot = ".\knoux-spectre-toolbox"
+New-Item -ItemType Directory -Path $projectRoot -Force | Out-Null
+
+# Create subdirectories
+$subDirs = @(
+    "config",
+    "core",
+    "modules",
+    "modules\mod.ai",
+    "modules\mod.dev",
+    "modules\mod.powershell",
+    "modules\mod.python",
+    "modules\mod.system",
+    "modules\mod.disk",
+    "modules\mod.network",
+    "modules\mod.security",
+    "modules\mod.process",
+    "modules\mod.logs",
+    "modules\mod.containers",
+    "modules\mod.backup",
+    "modules\mod.scriptgen",
+    "modules\mod.automation",
+    "modules\mod.clean",
+    "modules\mod.files",
+    "modules\mod.devops",
+    "modules\mod.experiments",
+    "modules\mod.settings",
+    "modules\mod.about",
+    "lib",
+    " outputs",  # Note: Intentional space to avoid issues, will fix in actual creation
+    "logs"
+)
+
+foreach ($dir in $subDirs) {
+    New-Item -ItemType Directory -Path "$projectRoot\$dir" -Force | Out-Null
+}
+
+# Fix the outputs directory name (remove leading space)
+Rename-Item -Path "$projectRoot\ outputs" -NewName "outputs" -Force | Out-Null
+```
+
+✅ Created 25 directories in the project structure
+
+---
+## 🎨 THEME CONFIGURATION
+
+📄 Creating `config/theme.json`:
+
+```json
+{
+  "name": "DarkPremiumNeon",
+  "author": "Knoux Systems",
+  "version": "1.0.0",
+  "description": "Dark cosmic theme with neon purple accents for Knoux Spectre Toolbox",
+  "palette": {
+    "background": "#0E1117",
+    "primary_text": "#E5E7EB",
+    "secondary_text": "#9CA3AF",
+    "faded_text": "#6B7280",
+    "accent_purple": "#7C3AED",
+    "hover_purple": "#A855F7",
+    "success_green": "#22C55E",
+    "warning_orange": "#F59E0B",
+    "error_red": "#EF4444"
+  },
+  "ansi": {
+    "reset": "\u001b[0m",
+    "bold": "\u001b[1m",
+    "dim": "\u001b[2m",
+    "bg_dark": "\u001b[48;2;14;17;23m",
+    "text_primary": "\u001b[38;2;229;231;235m",
+    "text_secondary": "\u001b[38;2;156;163;175m",
+    "text_faded": "\u001b[38;2;107;114;128m",
+    "purple": "\u001b[38;2;124;58;237m",
+    "purple_hover": "\u001b[38;2;168;85;247m",
+    "green": "\u001b[38;2;34;197;94m",
+    "orange": "\u001b[38;2;245;158;11m",
+    "red": "\u001b[38;2;239;68;68m",
+    "border": "\u001b[38;2;124;58;237m"
+  }
+}
+```
+
+✅ Theme configuration created
+
+---
+## 🔧 CORE LOADER SYSTEM
+
+📄 Creating `core/loader.ps1`:
+
+```powershell
+<#
+.SYNOPSIS
+    Knoux Spectre Toolbox Module Loader
+.DESCRIPTION
+    Dynamically loads all core libraries and modules
+.AUTHOR
+    Knoux Systems
+.VERSION
+    1.0.0
+#>
+
+function Import-KnouxCore {
+    [CmdletBinding()]
+    param()
+    
+    Write-Log "[LOADER] Starting core module initialization" "DEBUG"
+    
+    # Load theme configuration
+    $script:ThemeConfig = Get-Content -Path "$PSScriptRoot\..\config\theme.json" | ConvertFrom-Json
+    
+    # Recreate ANSI hashtable from theme config
+    $script:ANSI = @{
+        RESET         = $script:ThemeConfig.ansi.reset
+        BOLD          = $script:ThemeConfig.ansi.bold
+        DIM           = $script:ThemeConfig.ansi.dim
+        BG_DARK       = $script:ThemeConfig.ansi.bg_dark
+        TEXT_PRIMARY  = $script:ThemeConfig.ansi.text_primary
+        TEXT_SECONDARY= $script:ThemeConfig.ansi.text_secondary
+        TEXT_FADED    = $script:ThemeConfig.ansi.text_faded
+        PURPLE        = $script:ThemeConfig.ansi.purple
+        PURPLE_HOVER  = $script:ThemeConfig.ansi.purple_hover
+        GREEN         = $script:ThemeConfig.ansi.green
+        ORANGE        = $script:ThemeConfig.ansi.orange
+        RED           = $script:ThemeConfig.ansi.red
+        BORDER        = $script:ThemeConfig.ansi.border
+    }
+    
+    Write-Log "[LOADER] Theme engine loaded successfully" "DEBUG"
+    
+    # Load shared helper functions
+    $helperPath = "$PSScriptRoot\..\lib\helper.functions.ps1"
+    if (Test-Path $helperPath) {
+        . $helperPath
+        Write-Log "[LOADER] Shared helpers loaded" "DEBUG"
+    }
+    
+    Write-Log "[LOADER] Core initialization completed" "INFO"
+}
+
+# Automatically run on import
+Import-KnouxCore
+```
+
+✅ Core loader system created
+
+---
+## 📜 HELPER FUNCTIONS LIBRARY
+
+📄 Creating `lib/helper.functions.ps1`:
+
+```powershell
+<#
+.SYNOPSIS
+    Knoux Spectre Toolbox Shared Helper Functions
+.DESCRIPTION
+    Collection of reusable utility functions for modules
+.AUTHOR
+    Knoux Systems
+.VERSION
+    1.0.0
+#>
+
+function Test-AdminPrivilege {
+    $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
+    $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
+    return $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+}
+
+function Format-KnouxBytes {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [double]$Bytes
+    )
+    
+    $units = "B", "KB", "MB", "GB", "TB"
+    $unitIndex = 0
+    
+    while ($Bytes -gt 1024 -and $unitIndex -lt ($units.Length - 1)) {
+        $Bytes /= 1024
+        $unitIndex++
+    }
+    
+    return "{0:N2} {1}" -f $Bytes, $units[$unitIndex]
+}
+
+function Show-KnouxProgress {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Message,
+        [int]$PercentComplete = 0
+    )
+    
+    Write-Host "${ANSI.TEXT_SECONDARY}${Message}${ANSI.RESET}" -NoNewline
+    
+    if ($PercentComplete -gt 0) {
+        Write-Host " (${ANSI.PURPLE}${PercentComplete}%${ANSI.RESET})" -NoNewline
+    }
+    
+    Write-Host ""
+}
+
+function Confirm-KnouxAction {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Prompt,
+        [string]$DefaultChoice = "N"
+    )
+    
+    do {
+        Write-Host "${ANSI.ORANGE}? ${Prompt} ${ANSI.RESET}" -NoNewline
+        
+        if ($DefaultChoice -eq "Y") {
+            Write-Host "${ANSI.TEXT_SECONDARY}(Y/n)${ANSI.RESET}: " -NoNewline
+        } else {
+            Write-Host "${ANSI.TEXT_SECONDARY}(y/N)${ANSI.RESET}: " -NoNewline
+        }
+        
+        $response = Read-Host
+        
+        if ([string]::IsNullOrWhiteSpace($response)) {
+            $response = $DefaultChoice
+        }
+        
+        switch ($response.ToUpper()) {
+            "Y" { return $true }
+            "N" { return $false }
+            default { 
+                Write-Host "${ANSI.RED}× Please answer Y or N.${ANSI.RESET}"
+            }
+        }
+    } while ($true)
+}
+
+Export-ModuleMember -Function @(
+    'Test-AdminPrivilege',
+    'Format-KnouxBytes',
+    'Show-KnouxProgress',
+    'Confirm-KnouxAction'
+)
+```
+
+✅ Helper functions library created
+
+---
+## 🧩 MENU ENGINE SYSTEM
+
+📄 Creating `core/menuengine.ps1`:
+
+```powershell
+<#
+.SYNOPSIS
+    Knoux Spectre Toolbox Menu Engine
+.DESCRIPTION
+    Provides advanced menu navigation and rendering capabilities
+.AUTHOR
+    Knoux Systems
+.VERSION
+    1.0.0
+#>
+
+function Show-KnouxSubMenu {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Title,
+        
+        [Parameter(Mandatory=$true)]
+        [array]$MenuItems,
+        
+        [string]$BackLabel = "Back to Main Menu"
+    )
+    
+    do {
+        Clear-ScreenWithBackground
+        
+        # Display title
+        Write-Host "${ANSI.BG_DARK}${ANSI.PURPLE}${ANSI.BOLD}$Title${ANSI.RESET}"
+        Write-Host "${ANSI.BORDER}$((-join (1..($Title.Length + 4) | ForEach-Object { "─" }))])${ANSI.RESET}"
+        Write-Host ""
+        
+        # Display menu items
+        for ($i = 0; $i -lt $MenuItems.Count; $i++) {
+            $item = $MenuItems[$i]
+            Write-Host " ${ANSI.PURPLE}$($i + 1)${ANSI.RESET}  ${ANSI.TEXT_PRIMARY}$($item.Label)${ANSI.RESET}"
+        }
+        
+        Write-Host ""
+        Write-Host " ${ANSI.RED}0${ANSI.RESET}  ${ANSI.TEXT_PRIMARY}$BackLabel${ANSI.RESET}"
+        Write-Host ""
+        
+        $choice = Read-ValidatedSubInput -Max $MenuItems.Count
+        
+        if ($choice -eq 0) {
+            return
+        }
+        
+        # Execute the selected action
+        $selectedItem = $MenuItems[$choice - 1]
+        if ($selectedItem.Action -and (Get-Command $selectedItem.Action -ErrorAction SilentlyContinue)) {
+            & $selectedItem.Action
+        } elseif ($selectedItem.ScriptBlock) {
+            & $selectedItem.ScriptBlock
+        } else {
+            Write-Host "${ANSI.RED}× Action not found${ANSI.RESET}"
+            Start-Sleep -Milliseconds 500
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.TEXT_SECONDARY}Press any key to continue...${ANSI.RESET}"
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        
+    } while ($true)
+}
+
+function Read-ValidatedSubInput {
+    [CmdletBinding()]
+    param(
+        [int]$Max
+    )
+    
+    do {
+        Write-Host "${ANSI.PURPLE}┌─ Select Option${ANSI.RESET}" -NoNewline
+        Write-Host "${ANSI.TEXT_SECONDARY} (0-$Max)${ANSI.RESET}" -NoNewline
+        Write-Host "${ANSI.PURPLE}:${ANSI.RESET} " -NoNewline
+        
+        $input = Read-Host
+        
+        if ([string]::IsNullOrWhiteSpace($input)) {
+            Write-Host "${ANSI.RED}× Invalid selection. Please try again.${ANSI.RESET}"
+            continue
+        }
+        
+        if ($input -match '^\d+$') {
+            $number = [int]$input
+            if ($number -ge 0 -and $number -le $Max) {
+                return $number
+            }
+        }
+        
+        Write-Host "${ANSI.RED}× Invalid selection. Please enter a number between 0-$Max.${ANSI.RESET}"
+    } while ($true)
+}
+
+Export-ModuleMember -Function @('Show-KnouxSubMenu', 'Read-ValidatedSubInput')
+```
+
+✅ Menu engine system created
+
+---
+## 🧠 AI & CODING TOOLS MODULE
+
+📄 Creating `modules/mod.ai/mod.prompt.engine.ps1`:
+
+```powershell
+<#
+.SYNOPSIS
+    Knoux Spectre Prompt Engine
+.DESCRIPTION
+    Interactive prompt-to-script conversion tool for developers
+.AUTHOR
+    Knoux Systems
+.VERSION
+    1.0.0
+#>
+
+function Invoke-PromptEngine {
+    [CmdletBinding()]
+    param()
+    
+    Clear-ScreenWithBackground
+    Write-Host "${ANSI.BG_DARK}${ANSI.PURPLE}${ANSI.BOLD}🧠 PROMPT ENGINE${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}────────────────────────────────${ANSI.RESET}"
+    Write-Host ""
+    
+    do {
+        Write-Host "${ANSI.TEXT_SECONDARY}Available Modes:${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}1${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Powershell Script${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}2${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Python Script${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}3${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Batch Script${ANSI.RESET}"
+        Write-Host ""
+        Write-Host " ${ANSI.RED}0${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Back to Menu${ANSI.RESET}"
+        Write-Host ""
+        
+        $langChoice = Read-ValidatedPromptInput -Min 0 -Max 3
+        
+        switch ($langChoice) {
+            0 { return }
+            1 { $language = "Powershell" }
+            2 { $language = "Python" }
+            3 { $language = "Batch" }
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.TEXT_SECONDARY}Enter your natural language prompt:${ANSI.RESET}"
+        Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+        $userPrompt = Read-Host
+        
+        if (-not [string]::IsNullOrWhiteSpace($userPrompt)) {
+            Generate-CodeStub -Prompt $userPrompt -Language $language
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.TEXT_SECONDARY}Press any key to continue...${ANSI.RESET}"
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        Clear-ScreenWithBackground
+        
+    } while ($true)
+}
+
+function Read-ValidatedPromptInput {
+    [CmdletBinding()]
+    param(
+        [int]$Min,
+        [int]$Max
+    )
+    
+    do {
+        Write-Host "${ANSI.PURPLE}┌─ Choose Mode${ANSI.RESET}" -NoNewline
+        Write-Host "${ANSI.TEXT_SECONDARY} ($Min-$Max)${ANSI.RESET}" -NoNewline
+        Write-Host "${ANSI.PURPLE}:${ANSI.RESET} " -NoNewline
+        
+        $input = Read-Host
+        
+        if ([string]::IsNullOrWhiteSpace($input)) {
+            Write-Host "${ANSI.RED}× Invalid selection. Please try again.${ANSI.RESET}"
+            continue
+        }
+        
+        if ($input -match '^\d+$') {
+            $number = [int]$input
+            if ($number -ge $Min -and $number -le $Max) {
+                return $number
+            }
+        }
+        
+        Write-Host "${ANSI.RED}× Invalid selection. Please enter a number between $Min-$Max.${ANSI.RESET}"
+    } while ($true)
+}
+
+function Generate-CodeStub {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Prompt,
+        [Parameter(Mandatory=$true)]
+        [ValidateSet("Powershell", "Python", "Batch")]
+        [string]$Language
+    )
+    
+    Write-Host ""
+    Write-Host "${ANSI.GREEN}● Generating code scaffold for '$Language'...${ANSI.RESET}"
+    Start-Sleep -Milliseconds 800
+    
+    # Generate basic structure based on language
+    switch ($Language) {
+        "Powershell" {
+            $content = @"
+<#
+.SYNOPSIS
+    $Prompt
+.DESCRIPTION
+    Autogenerated by Knoux Spectre Prompt Engine
+.LASTMODIFIED
+    $(Get-Date -Format "yyyy-MM-dd HH:mm")
+#>
+
+#region :::::::: $Prompt ::::::::
+
+# Implementation goes here...
+Write-Host "`$ANSI.TEXT_SECONDARY"[+] Executing $Prompt...`$ANSI.RESET"
+
+#endregion
+
+Write-Host "`$ANSI.GREEN"✅ Completed processing`$ANSI.RESET"
+"@
+        }
+        
+        "Python" {
+            $content = @"
+#!/usr/bin/env python3
+"""
+Title: $Prompt
+Generated by: Knoux Spectre Toolbox v1.0
+Time: $(Get-Date -Format "yyyy-MM-dd HH:mm")
+"""
+
+def main():
+    """Execute primary functionality"""
+    print("${chr(27)}[38;2;156;163;175m[*] Processing: $Prompt...${chr(27)}[0m")
+    # Your Python logic goes here...
+
+
+if __name__ == "__main__":
+    main()
+
+print("\033[38;2;34;197;94m✅ Success!\033[0m")
+"@
+        }
+        
+        "Batch" {
+            $content = @"
+@echo off
+setlocal enabledelayedexpansion
+
+:: Title: $Prompt
+:: Generated by: Knoux Spectre Prompt Engine
+:: Time: $(Get-Date -Format "yyyy-MM-dd HH:mm")
+
+:: Console setup (UTF-8 support and visual effects simulation through ANSI sequences)
+chcp 65001 >nul
+
+echo [38;2;156;163;175m[*] Working on task: $Prompt...[0m
+
+::$Prompt implementation
+rem Place code logic here...
+
+echo [38;2;34;197;94mSuccess! Action complete.[0m
+pause >nul
+"@
+        }
+    }
+    
+    # Save output with sanitized name
+    $safePrompt = $Prompt -replace '[^a-zA-Z0-9_\-. ]', '' -replace '\s+', '-'
+    $fileName = "$safePrompt.$(switch($Language) {'Powershell'{'ps1'} 'Python'{'py'} 'Batch'{'bat'}})"
+    $filePath = Join-Path $PSScriptRoot "../../outputs/$fileName"
+    
+    # Ensure outputs directory exists
+    $outputDir = Join-Path $PSScriptRoot "../../outputs"
+    if (!(Test-Path $outputDir)) {
+        New-Item -ItemType Directory -Path $outputDir | Out-Null
+    }
+    
+    Set-Content -Path $filePath -Value $content -Encoding UTF8
+    
+    Write-Host "${ANSI.GREEN}└ ✓ Saved to: $filePath${ANSI.RESET}"
+    Write-Host "${ANSI.TEXT_SECONDARY}(Tip: Type: ii '$(Split-Path $filePath -Leaf)' to edit immediately)${ANSI.RESET}"
+}
+
+Export-ModuleMember -Function @('Invoke-PromptEngine')
+```
+
+✅ AI & Coding Tools module created
+
+---
+## 🛠 DEV TOOLS MODULE
+
+📄 Creating `modules/mod.dev/install.vscode.extensions.ps1`:
+
+```powershell
+<#
+.SYNOPSIS
+    Knoux Spectre VS Code Extension Installer
+.DESCRIPTION
+    Installs recommended VS Code extensions for development
+.AUTHOR
+    Knoux Systems
+.VERSION
+    1.0.0
+#>
+
+function Install-VSCodeExtensions {
+    [CmdletBinding()]
+    param()
+    
+    Clear-ScreenWithBackground
+    Write-Host "${ANSI.BG_DARK}${ANSI.PURPLE}${ANSI.BOLD}🛠 VS CODE EXTENSIONS INSTALLER${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}────────────────────────────────────────${ANSI.RESET}"
+    Write-Host ""
+    
+    # Check if VS Code is installed
+    $vscodePaths = @(
+        "${env:ProgramFiles}\Microsoft VS Code\bin\code.cmd",
+        "${env:ProgramFiles(x86)}\Microsoft VS Code\bin\code.cmd",
+        "${env:USERPROFILE}\AppData\Local\Programs\Microsoft VS Code\bin\code.cmd"
+    )
+    
+    $vscodePath = $vscodePaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+    
+    if (-not $vscodePath) {
+        Write-Host "${ANSI.RED}× VS Code not found. Please install VS Code first.${ANSI.RESET}"
+        Start-Sleep -Seconds 2
+        return
+    }
+    
+    Write-Host "${ANSI.GREEN}✓ VS Code found at: $vscodePath${ANSI.RESET}"
+    Write-Host ""
+    
+    # Recommended extensions
+    $extensions = @(
+        @{ Id = "ms-vscode.powershell"; Name = "PowerShell" },
+        @{ Id = "ms-python.python"; Name = "Python" },
+        @{ Id = "ms vs-ce.theme-dimmed"; Name = "Dimmer" },
+        @{ Id = "bradlc.vscode-tailwindcss"; Name = "Tailwind CSS IntelliSense" },
+        @{ Id = "christian-kohler.path-intellisense"; Name = "Path Intellisense" },
+        @{ Id = "ms-azuretools.vscode-docker"; Name = "Docker" },
+        @{ Id = "ms-kubernetes-tools.vscode kubernetes-tools"; Name = "Kubernetes" },
+        @{ Id = "gruntfuggly.todo-tree"; Name = "Todo Tree" }
+    )
+    
+    Write-Host "${ANSI.TEXT_SECONDARY}Recommended Extensions:${ANSI.RESET}"
+    for ($i = 0; $i -lt $extensions.Count; $i++) {
+        $ext = $extensions[$i]
+        Write-Host " ${ANSI.PURPLE}$($i + 1)${ANSI.RESET} ${ANSI.TEXT_PRIMARY}$($ext.Name)${ANSI.RESET}"
+    }
+    Write-Host ""
+    
+    $confirm = Confirm-KnouxAction "Install all recommended extensions?"
+    
+    if ($confirm) {
+        Write-Host ""
+        Write-Host "${ANSI.TEXT_SECONDARY}Installing extensions...${ANSI.RESET}"
+        
+        foreach ($ext in $extensions) {
+            Write-Host "${ANSI.TEXT_SECONDARY} Installing $($ext.Name)...${ANSI.RESET}" -NoNewline
+            try {
+                & $vscodePath --install-extension $ext.Id --force 2>$null
+                Write-Host " ${ANSI.GREEN}DONE${ANSI.RESET}"
+            } catch {
+                Write-Host " ${ANSI.RED}FAILED${ANSI.RESET}"
+            }
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.GREEN}✓ Extension installation complete!${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}Restart VS Code to see the changes.${ANSI.RESET}"
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Press any key to continue...${ANSI.RESET}"
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+}
+
+Export-ModuleMember -Function @('Install-VSCodeExtensions')
+```
+
+✅ Dev Tools module created
+
+---
+## 🔧 POWERSHELL ARSENAL MODULE
+
+📄 Creating `modules/mod.powershell/system.audit.report.ps1`:
+
+```powershell
+<#
+.SYNOPSIS
+    Knoux Spectre System Audit Report
+.DESCRIPTION
+    Generates a comprehensive system audit report
+.AUTHOR
+    Knoux Systems
+.VERSION
+    1.0.0
+#>
+
+function Get-SystemAuditReport {
+    [CmdletBinding()]
+    param()
+    
+    Clear-ScreenWithBackground
+    Write-Host "${ANSI.BG_DARK}${ANSI.PURPLE}${ANSI.BOLD}🔧 SYSTEM AUDIT REPORT${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}────────────────────────────────${ANSI.RESET}"
+    Write-Host ""
+    
+    # Progress indicator
+    Show-KnouxProgress "Collecting system information" 10
+    Start-Sleep -Milliseconds 300
+    
+    # Get computer info
+    $computerInfo = Get-ComputerInfo
+    Show-KnouxProgress "Collecting hardware details" 20
+    Start-Sleep -Milliseconds 300
+    
+    # Get OS info
+    $osInfo = Get-CimInstance Win32_OperatingSystem
+    Show-KnouxProgress "Analyzing system resources" 30
+    Start-Sleep -Milliseconds 300
+    
+    # Get CPU info
+    $cpuInfo = Get-CimInstance Win32_Processor
+    Show-KnouxProgress "Scanning running processes" 40
+    Start-Sleep -Milliseconds 300
+    
+    # Get memory info
+    $memInfo = Get-CimInstance Win32_PhysicalMemory
+    Show-KnouxProgress "Reviewing installed software" 50
+    Start-Sleep -Milliseconds 300
+    
+    # Get disk info
+    $diskInfo = Get-CimInstance Win32_LogicalDisk | Where-Object {$_.DriveType -eq 3}
+    Show-KnouxProgress "Compiling network interfaces" 60
+    Start-Sleep -Milliseconds 300
+    
+    # Get network adapters
+    $networkAdapters = Get-NetAdapter | Where-Object {$_.Status -eq "Up"}
+    Show-KnouxProgress "Generating report" 80
+    Start-Sleep -Milliseconds 300
+    
+    # Display report
+    Write-Host "${ANSI.PURPLE}${ANSI.BOLD}SYSTEM INFORMATION${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}──────────────────${ANSI.RESET}"
+    Write-Host "${ANSI.TEXT_SECONDARY}Computer Name:${ANSI.RESET} $($computerInfo.CsName)"
+    Write-Host "${ANSI.TEXT_SECONDARY}Manufacturer:${ANSI.RESET} $($computerInfo.CsManufacturer)"
+    Write-Host "${ANSI.TEXT_SECONDARY}Model:${ANSI.RESET} $($computerInfo.CsModel)"
+    Write-Host ""
+    
+    Write-Host "${ANSI.PURPLE}${ANSI.BOLD}OPERATING SYSTEM${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}────────────────${ANSI.RESET}"
+    Write-Host "${ANSI.TEXT_SECONDARY}Name:${ANSI.RESET} $($osInfo.Caption)"
+    Write-Host "${ANSI.TEXT_SECONDARY}Version:${ANSI.RESET} $($osInfo.Version)"
+    Write-Host "${ANSI.TEXT_SECONDARY}Build:${ANSI.RESET} $($osInfo.BuildNumber)"
+    Write-Host "${ANSI.TEXT_SECONDARY}Install Date:${ANSI.RESET} $($osInfo.InstallDate)"
+    Write-Host ""
+    
+    Write-Host "${ANSI.PURPLE}${ANSI.BOLD}PROCESSOR${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}─────────${ANSI.RESET}"
+    Write-Host "${ANSI.TEXT_SECONDARY}Name:${ANSI.RESET} $($cpuInfo.Name)"
+    Write-Host "${ANSI.TEXT_SECONDARY}Cores:${ANSI.RESET} $($cpuInfo.NumberOfCores)"
+    Write-Host "${ANSI.TEXT_SECONDARY}Logical Processors:${ANSI.RESET} $($cpuInfo.NumberOfLogicalProcessors)"
+    Write-Host ""
+    
+    Write-Host "${ANSI.PURPLE}${ANSI.BOLD}MEMORY${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}──────${ANSI.RESET}"
+    $totalMemory = ($memInfo | Measure-Object -Property Capacity -Sum).Sum / 1GB
+    Write-Host "${ANSI.TEXT_SECONDARY}Total:${ANSI.RESET} $([math]::Round($totalMemory, 2)) GB"
+    Write-Host ""
+    
+    Write-Host "${ANSI.PURPLE}${ANSI.BOLD}DISK USAGE${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}──────────${ANSI.RESET}"
+    foreach ($disk in $diskInfo) {
+        $freeSpace = $disk.FreeSpace / 1GB
+        $totalSpace = $disk.Size / 1GB
+        $usedPercent = [math]::Round((($totalSpace - $freeSpace) / $totalSpace) * 100, 2)
+        
+        Write-Host "${ANSI.TEXT_SECONDARY}$($disk.DeviceID):${ANSI.RESET} $([math]::Round($freeSpace, 2)) GB free of $([math]::Round($totalSpace, 2)) GB ($usedPercent%)"
+    }
+    Write-Host ""
+    
+    Write-Host "${ANSI.PURPLE}${ANSI.BOLD}NETWORK INTERFACES${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}──────────────────${ANSI.RESET}"
+    foreach ($adapter in $networkAdapters) {
+        Write-Host "${ANSI.TEXT_SECONDARY}$($adapter.Name):${ANSI.RESET} $($adapter.LinkSpeed) Mbps"
+    }
+    Write-Host ""
+    
+    Show-KnouxProgress "Audit report completed" 100
+    Write-Host ""
+    
+    # Option to save report
+    $saveReport = Confirm-KnouxAction "Save report to file?"
+    
+    if ($saveReport) {
+        $reportPath = Join-Path $PSScriptRoot "../../outputs/SystemAuditReport_$(Get-Date -Format 'yyyyMMdd_HHmmss').txt"
+        
+        # Create outputs directory if it doesn't exist
+        $outputDir = Join-Path $PSScriptRoot "../../outputs"
+        if (!(Test-Path $outputDir)) {
+            New-Item -ItemType Directory -Path $outputDir | Out-Null
+        }
+        
+        # Generate report content
+        $reportContent = @"
+Knoux Spectre Toolbox - System Audit Report
+Generated on: $(Get-Date)
+
+=== SYSTEM INFORMATION ===
+Computer Name: $($computerInfo.CsName)
+Manufacturer: $($computerInfo.CsManufacturer)
+Model: $($computerInfo.CsModel)
+
+=== OPERATING SYSTEM ===
+Name: $($osInfo.Caption)
+Version: $($osInfo.Version)
+Build: $($osInfo.BuildNumber)
+Install Date: $($osInfo.InstallDate)
+
+=== PROCESSOR ===
+Name: $($cpuInfo.Name)
+Cores: $($cpuInfo.NumberOfCores)
+Logical Processors: $($cpuInfo.NumberOfLogicalProcessors)
+
+=== MEMORY ===
+Total: $([math]::Round($totalMemory, 2)) GB
+
+=== DISK USAGE ===
+$($diskInfo | ForEach-Object {
+    $freeSpace = $_.FreeSpace / 1GB
+    $totalSpace = $_.Size / 1GB
+    $usedPercent = [math]::Round((($totalSpace - $freeSpace) / $totalSpace) * 100, 2)
+    "$($_.DeviceID): $([math]::Round($freeSpace, 2)) GB free of $([math]::Round($totalSpace, 2)) GB ($usedPercent%)"
+} | Out-String)
+
+=== NETWORK INTERFACES ===
+$($networkAdapters | ForEach-Object {
+    "$($_.Name): $($_.LinkSpeed) Mbps"
+} | Out-String)
+"@
+        
+        Set-Content -Path $reportPath -Value $reportContent -Encoding UTF8
+        Write-Host "${ANSI.GREEN}✓ Report saved to: $reportPath${ANSI.RESET}"
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Press any key to continue...${ANSI.RESET}"
+    $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+}
+
+Export-ModuleMember -Function @('Get-SystemAuditReport')
+```
+
+✅ PowerShell Arsenal module created
+
+---
+## 🐍 PYTHON TOOLBOX MODULE
+
+📄 Creating `modules/mod.python/virtualenv.manager.ps1`:
+
+```powershell
+<#
+.SYNOPSIS
+    Knoux Spectre Python Virtual Environment Manager
+.DESCRIPTION
+    Manages Python virtual environments
+.AUTHOR
+    Knoux Systems
+.VERSION
+    1.0.0
+#>
+
+function Show-VenvManager {
+    [CmdletBinding()]
+    param()
+    
+    Clear-ScreenWithBackground
+    Write-Host "${ANSI.BG_DARK}${ANSI.PURPLE}${ANSI.BOLD}🐍 PYTHON VENV MANAGER${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}────────────────────────────────${ANSI.RESET}"
+    Write-Host ""
+    
+    do {
+        Write-Host "${ANSI.TEXT_SECONDARY}Virtual Environment Options:${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}1${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Create new virtual environment${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}2${ANSI.RESET} ${ANSI.TEXT_PRIMARY}List existing environments${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}3${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Activate virtual environment${ANSI.RESET}"
+        Write-Host " ${ANSI.PURPLE}4${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Remove virtual environment${ANSI.RESET}"
+        Write-Host ""
+        Write-Host " ${ANSI.RED}0${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Back to Menu${ANSI.RESET}"
+        Write-Host ""
+        
+        $choice = Read-ValidatedSubInput -Max 4
+        
+        switch ($choice) {
+            0 { return }
+            1 { New-VirtualEnvironment }
+            2 { List-VirtualEnvironments }
+            3 { Activate-VirtualEnvironment }
+            4 { Remove-VirtualEnvironment }
+        }
+        
+        Write-Host ""
+        Write-Host "${ANSI.TEXT_SECONDARY}Press any key to continue...${ANSI.RESET}"
+        $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+        Clear-ScreenWithBackground
+        
+    } while ($true)
+}
+
+function New-VirtualEnvironment {
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Enter name for new virtual environment:${ANSI.RESET}"
+    Write-Host "${ANSI.PURPLE}>>${ANSI.RESET} " -NoNewline
+    $venvName = Read-Host
+    
+    if ([string]::IsNullOrWhiteSpace($venvName)) {
+        Write-Host "${ANSI.RED}× Name cannot be empty${ANSI.RESET}"
+        return
+    }
+    
+    # Check if python is installed
+    $pythonPath = Get-Command python -ErrorAction SilentlyContinue
+    if (-not $pythonPath) {
+        Write-Host "${ANSI.RED}× Python not found. Please install Python first.${ANSI.RESET}"
+        return
+    }
+    
+    # Create venv directory if it doesn't exist
+    $venvDir = Join-Path $PSScriptRoot "../../outputs/python_venvs"
+    if (!(Test-Path $venvDir)) {
+        New-Item -ItemType Directory -Path $venvDir | Out-Null
+    }
+    
+    $fullPath = Join-Path $venvDir $venvName
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Creating virtual environment '$venvName'...${ANSI.RESET}" -NoNewline
+    try {
+        python -m venv $fullPath 2>$null
+        Write-Host " ${ANSI.GREEN}DONE${ANSI.RESET}"
+        Write-Host "${ANSI.GREEN}✓ Virtual environment created at: $fullPath${ANSI.RESET}"
+    } catch {
+        Write-Host " ${ANSI.RED}FAILED${ANSI.RESET}"
+    }
+}
+
+function List-VirtualEnvironments {
+    $venvDir = Join-Path $PSScriptRoot "../../outputs/python_venvs"
+    
+    if (!(Test-Path $venvDir)) {
+        Write-Host "${ANSI.TEXT_SECONDARY}No virtual environments found${ANSI.RESET}"
+        return
+    }
+    
+    $venvs = Get-ChildItem -Path $venvDir -Directory
+    
+    if ($venvs.Count -eq 0) {
+        Write-Host "${ANSI.TEXT_SECONDARY}No virtual environments found${ANSI.RESET}"
+        return
+    }
+    
+    Write-Host ""
+    Write-Host "${ANSI.TEXT_SECONDARY}Existing Virtual Environments:${ANSI.RESET}"
+    for ($i = 0; $i -lt $venvs.Count; $i++) {
+        Write-Host " ${ANSI.PURPLE}$($i + 1)${ANSI.RESET} ${ANSI.TEXT_PRIMARY}$($venvs[$i].Name)${ANSI.RESET}"
+    }
+}
+
+function Activate-VirtualEnvironment {
+    $venvDir = Join-Path $PSScriptRoot "../../outputs/python_venvs"
+    
+    if (!(Test-Path $venvDir)) {
+        Write-Host "${ANSI.TEXT_SECONDARY}No virtual environments found${ANSI.RESET}"
+        return
+    }
+    
+    $venvs = Get-ChildItem -Path $venvDir -Directory
+    
+    if ($venvs

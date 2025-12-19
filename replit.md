@@ -1,40 +1,62 @@
-# Knoux Spectre Toolbox
+# Knoux Spectre Toolbox - Complete Integration
 
-## Overview
-A React-based web application providing a systems toolbox with AI-powered features for script generation and system analysis. Built with Vite, React 19, TypeScript, and Tailwind CSS.
+## Project Overview
+A full-featured desktop-style web application integrating React frontend with PowerShell backend scripts for system administration, monitoring, and automation tasks.
 
-## Project Structure
-- `index.html` - Main HTML entry point
-- `index.tsx` - React app entry point
-- `App.tsx` - Main application component with navigation and layout
-- `components/` - React components
-  - `PromptEngine.tsx` - AI-powered script generation
-  - `SystemAudit.tsx` - System analysis module
-  - `ThemeSystem.tsx` - Theme settings
-- `services/` - Backend services
-  - `gemini.ts` - Google Gemini AI integration
-- `constants.tsx` - App constants and module definitions
-- `types.ts` - TypeScript type definitions
+## Architecture
 
-## Development
-- **Framework**: React 19 with TypeScript
-- **Build Tool**: Vite
-- **Styling**: Tailwind CSS (via CDN)
+### Frontend (React + Vite)
 - **Port**: 5000
+- **Framework**: React 19 with TypeScript
+- **UI**: Tailwind CSS with Knoux Dark Cosmic Neon theme
+- **Components**: Desktop-style interface with sidebar, panels, windowed modules
 
-### Running Locally
-```bash
-npm install
-npm run dev
-```
+### Backend (Node.js + Express)
+- **Port**: 3001
+- **Purpose**: Execute PowerShell scripts from web interface
+- **API**: REST endpoints for script execution and module discovery
 
-## Environment Variables
-- `GEMINI_API_KEY` - Required for AI features (Google Gemini API)
+### PowerShell Scripts
+Located in `/ps-scripts/` directory:
+- **config/**: Theme and configuration files
+- **core/**: Core loaders and menu engine
+- **lib/**: Helper functions and utilities
+- **modules/**: 20+ functional modules for system tools
+
+## Module Structure
+Each module provides real system administration capabilities:
+1. **AI & Coding Tools** - Script generation
+2. **System Control** - Services and processes
+3. **Network Tools** - Port scanning and diagnostics
+4. **Security & Pentest** - Hash tools, permissions audit
+5. **Storage Management** - Disk cleanup, backups
+6. **Process Manager** - Memory analysis, process control
+7. **Event Logs** - Log viewer and monitoring
+8. **Containers** - Docker integration
+9. **Backup & Restore** - Folder backup with scheduling
+10. And 11+ more modules
 
 ## Recent Changes
-- 2024-12-19: Initial setup for Replit environment
-  - Configured Vite to use port 5000 with host 0.0.0.0
-  - Added allowedHosts: true for Replit proxy compatibility
-  - Added script entry point to index.html
-  - Updated Gemini service to handle missing API key gracefully
-  - Updated AI model to gemini-2.0-flash
+- **2024-12-19**: Complete integration of PowerShell scripts
+  - Created full directory structure for 20+ modules
+  - Integrated theme engine and core utilities
+  - Created Express backend API for PowerShell execution
+  - Wired React frontend to backend services
+  - All scripts ready for execution
+
+## Technology Stack
+- Frontend: React 19, TypeScript, Vite, Tailwind CSS
+- Backend: Node.js, Express, PowerShell integration
+- Desktop UI: Glassmorphism, neon accents, real tool execution
+- Theme: Dark Cosmic Neon (Knoux branding)
+
+## Workflows
+- **Frontend**: `npm run dev` on port 5000
+- **Backend**: `node server.js` on port 3001 (available via API)
+
+## Next Steps
+1. Start both frontend and backend
+2. Navigate to modules through sidebar
+3. Execute real system administration tasks
+4. View live output and logs
+5. Access all 20+ integrated tools
