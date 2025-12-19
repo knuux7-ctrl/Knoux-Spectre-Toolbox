@@ -5,6 +5,9 @@ import { ModuleType } from './types';
 import { PromptEngine } from './components/PromptEngine';
 import { SystemAudit } from './components/SystemAudit';
 import { ThemeSystem } from './components/ThemeSystem';
+import { SystemModule } from './components/SystemModule';
+import { DiskModule } from './components/DiskModule';
+import { NetworkModule } from './components/NetworkModule';
 import { 
   Search, Bell, User, LayoutGrid, 
   Menu, X, ExternalLink, ChevronRight,
@@ -20,7 +23,11 @@ const App: React.FC = () => {
       case ModuleType.AI:
         return <PromptEngine />;
       case ModuleType.SYSTEM:
-        return <SystemAudit />;
+        return <SystemModule />;
+      case ModuleType.DISK:
+        return <DiskModule />;
+      case ModuleType.NETWORK:
+        return <NetworkModule />;
       case ModuleType.SETTINGS:
         return <ThemeSystem />;
       default:
