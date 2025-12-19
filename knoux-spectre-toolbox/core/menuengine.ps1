@@ -1,6 +1,51 @@
 <#
 .SYNOPSIS
     Knoux Spectre Toolbox Menu Engine
+#>
+
+function Show-KnouxSubMenu {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$true)][string]$Title,
+        [Parameter(Mandatory=$true)][array]$MenuItems,
+        [string]$BackLabel = "Back"
+    )
+
+    do {
+        Clear-Host
+        Write-Host "=== $Title ===" -ForegroundColor Cyan
+        for ($i=0; $i -lt $MenuItems.Count; $i++) {
+            $num = $i + 1
+            Write-Host " $num) $($MenuItems[$i].Label)"
+        }
+        Write-Host " 0) $BackLabel"
+
+        $choice = Read-ValidatedSubInput -Max $MenuItems.Count
+        if ($choice -eq 0) { return }
+
+        $sel = $MenuItems[$choice - 1]
+        if ($sel.Action -and (Get-Command $sel.Action -ErrorAction SilentlyContinue)) { & $sel.Action }
+        elseif ($sel.ScriptBlock) { & $sel.ScriptBlock }
+        else { Write-Host "Action not found" -ForegroundColor Red }
+
+        Write-Host "Press any key to continue..."; $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+    } while ($true)
+}
+
+function Read-ValidatedSubInput {
+    param([int]$Max)
+    do {
+        Write-Host "Select option (0-$Max): " -NoNewline
+        $input = Read-Host
+        if ($input -match '^[0-9]+$') { $n = [int]$input; if ($n -ge 0 -and $n -le $Max) { return $n } }
+        Write-Host "Invalid selection" -ForegroundColor Red
+    } while ($true)
+}
+
+Export-ModuleMember -Function @('Show-KnouxSubMenu','Read-ValidatedSubInput')
+<#
+.SYNOPSIS
+    Knoux Spectre Toolbox Menu Engine
 .DESCRIPTION
     Provides advanced menu navigation and rendering capabilities
 .AUTHOR
