@@ -1,0 +1,343 @@
+## 📄 modules/mod.scriptgen/batch.builder.ps1 (续)
+
+```python
+
+        folder_path = os.path.join(directory, folder)
+        folder_exts = extensions.get(folder, [])
+        
+        if ext in folder_exts:
+            try:
+                shutil.move(file_path, os.path.join(folder_path, filename))
+                print("\\033[38;2;34;197;94mMoved {} to {}\\033[0m".format(filename, folder))
+                break
+            except Exception as e:
+                print("\\033[38;2;239;68;68mFailed to move {}: {}\\033[0m".format(filename, str(e)))
+
+def main():
+    """Main function"""
+    directory = input("Enter directory to organize (or press Enter for current directory): ").strip()
+    
+    if not directory:
+        directory = os.getcwd()
+    
+    if not os.path.exists(directory):
+        print("\\033[38;2;239;68;68mDirectory does not exist: {}\\033[0m".format(directory))
+        return
+    
+    organize_files(directory)
+    print("\\033[38;2;34;197;94m✅ File organization complete\\033[0m")
+
+if __name__ == "__main__":
+    main()
+```
+        }
+        
+        4 {
+            $filePath = Join-Path $outputDir "log_parser.ps1"
+            $content = @"
+<#
+.SYNOPSIS
+    Log Parser
+.DESCRIPTION
+    Parses and analyzes log files
+.AUTHOR
+    Knoux Spectre Toolbox
+.CREATED
+    $(Get-Date -Format "yyyy-MM-dd HH:mm")
+#>
+
+# Log Parser Template
+param(
+    [Parameter(Mandatory=`$true)]
+    [string]`$LogPath,
+    
+    [string]`$OutputPath = "`$(Split-Path `$LogPath -Parent)\\parsed_log_`$(Get-Date -Format 'yyyyMMdd_HHmmss').txt"
+)
+
+Write-Host "`$ANSI.PURPLE`${ANSI.BOLD}LOG PARSER`${ANSI.RESET}"
+Write-Host "`$ANSI.BORDER`$(-join (1..25 | ForEach-Object { "─" }))`${ANSI.RESET}"
+
+if (-not (Test-Path `$LogPath)) {
+    Write-Host "`$ANSI.RED`× Log file not found: `$LogPath`$ANSI.RESET"
+    exit 1
+}
+
+Write-Host "`${ANSI.TEXT_SECONDARY}Parsing: `$LogPath`${ANSI.RESET}"
+Write-Host "`${ANSI.TEXT_SECONDARY}Output: `$OutputPath`${ANSI.RESET}"
+
+try {
+    # Read log file
+    `$logContent = Get-Content `$LogPath
+    
+    # Parse log entries (example format: [TIMESTAMP] [LEVEL] MESSAGE)
+    `$parsedEntries = `$logContent | ForEach-Object {
+        if (`$_ -match '\[([^\]]+)\]\s*\[([^\]]+)\]\s*(.*)') {
+            [PSCustomObject]@{
+                Timestamp = `$matches[1]
+                Level = `$matches[2]
+                Message = `$matches[3]
+            }
+        }
+    } | Where-Object { `$_ -ne `$null }
+    
+    # Generate report
+    `$report = @"
+Log Analysis Report
+Generated: `$`(Get-Date)
+Source: `$LogPath
+
+Total Entries: `$(`$parsedEntries.Count)
+
+Error Count: `$(`$parsedEntries | Where-Object { `$_.Level -eq 'ERROR' }).Count
+Warning Count: `$(`$parsedEntries | Where-Object { `$_.Level -eq 'WARN' }).Count
+Info Count: `$(`$parsedEntries | Where-Object { `$_.Level -eq 'INFO' }).Count
+
+Recent Errors:
+`$(`$parsedEntries | Where-Object { `$_.Level -eq 'ERROR' } | Select-Object -First 5 | ForEach-Object { "`$(`$_.Timestamp) `$(`$_.Message)" })
+
+"@ 
+    
+    # Save report
+    `$report | Out-File -FilePath `$OutputPath -Encoding UTF8
+    
+    Write-Host "`$ANSI.GREEN`✓ Log parsing complete`$ANSI.RESET"
+    Write-Host "`$ANSI.TEXT_SECONDARY`Report saved to: `$OutputPath`$ANSI.RESET"
+} catch {
+    Write-Host "`$ANSI.RED`× Error parsing log: `$(`$_.Exception.Message)`$ANSI.RESET"
+}
+"@
+        }
+        
+        5 {
+            $filePath = Join-Path $outputDir "process_monitor.ps1"
+            $content = @"
+<#
+.SYNOPSIS
+    Process Monitor
+.DESCRIPTION
+    Monitors system processes in real-time
+.AUTHOR
+    Knoux Spectre Toolbox
+.CREATED
+    $(Get-Date -Format "yyyy-MM-dd HH:mm")
+#>
+
+# Process Monitor Template
+param(
+    [int]`$Duration = 30,
+    [int]`$Interval = 2
+)
+
+Write-Host "`$ANSI.PURPLE`${ANSI.BOLD}PROCESS MONITOR`${ANSI.RESET}"
+Write-Host "`$ANSI.BORDER`$(-join (1..30 | ForEach-Object { "─" }))`${ANSI.RESET}"
+Write-Host "`${ANSI.TEXT_SECONDARY}Monitoring for `$Duration seconds...`${ANSI.RESET}"
+
+# Initialize tracking
+`$processHistory = @{}
+`$startTime = Get-Date
+`$endTime = `$startTime.AddSeconds(`$Duration)
+
+while ((Get-Date) -lt `$endTime) {
+    # Get current processes
+    `$currentProcesses = Get-Process | Select-Object Id, ProcessName, WorkingSet, CPU
+    
+    # Display summary
+    `$processCount = `$currentProcesses.Count
+    `$totalMemory = (`$currentProcesses | Measure-Object WorkingSet -Sum).Sum / 1MB
+    `$cpuUsage = (`$currentProcesses | Measure-Object CPU -Sum).Sum
+    
+    Write-Host "`r`${ANSI.TEXT_SECONDARY}Processes: `$processCount | Memory: `$([math]::Round(`$totalMemory, 2)) MB | CPU: `$([math]::Round(`$cpuUsage, 2))`${ANSI.RESET}" -NoNewline
+    
+    # Update history
+    `$currentProcesses | ForEach-Object {
+        `$procId = `$_.Id
+        if (-not `$processHistory.ContainsKey(`$procId)) {
+            `$processHistory[`$procId] = @{
+                Name = `$_.ProcessName
+                FirstSeen = Get-Date
+                MaxMemory = `$_.WorkingSet
+                TotalCPU = `$_.CPU
+            }
+        } else {
+            if (`$_.WorkingSet -gt `$processHistory[`$procId].MaxMemory) {
+                `$processHistory[`$procId].MaxMemory = `$_.WorkingSet
+            }
+            `$processHistory[`$procId].TotalCPU += `$_.CPU
+        }
+    }
+    
+    Start-Sleep -Seconds `$Interval
+}
+
+Write-Host ""
+Write-Host "`$ANSI.GREEN`✓ Monitoring complete`$ANSI.RESET"
+
+# Show top resource consumers
+Write-Host "`n`${ANSI.PURPLE`${ANSI.BOLD}TOP MEMORY CONSUMERS`${ANSI.RESET}"
+`$processHistory.GetEnumerator() | Sort-Object { `$_.Value.MaxMemory } -Descending | Select-Object -First 5 | ForEach-Object {
+    `$memoryMB = `$_.Value.MaxMemory / 1MB
+    Write-Host " `$ANSI.TEXT_PRIMARY`$(`$_.Value.Name)`$ANSI.RESET `$ANSI.TEXT_SECONDARY`$([math]::Round(`$memoryMB, 2)) MB`$ANSI.RESET"
+}
+"@
+        }
+    }
+    
+    try {
+        Set-Content -Path $filePath -Value $content -Encoding UTF8
+        
+        Write-Host ""
+        Write-Host "${ANSI.GREEN}✓ Template created successfully${ANSI.RESET}"
+        Write-Host "${ANSI.TEXT_SECONDARY}File saved to: $filePath${ANSI.RESET}"
+        
+        # Offer to open in editor
+        $openEditor = Confirm-KnouxAction "Open template in editor?" "N"
+        if ($openEditor) {
+            powershell.exe -Command "ii '$filePath'"
+        }
+    } catch {
+        Write-Host "${ANSI.RED}× Error creating template: $($_.Exception.Message)${ANSI.RESET}"
+    }
+}
+
+function Show-CodeSnippets {
+    Write-Host ""
+    Write-Host "${ANSI.PURPLE}${ANSI.BOLD}CODE SNIPPET MANAGER${ANSI.RESET}"
+    Write-Host "${ANSI.BORDER}────────────────────${ANSI.RESET}"
+    Write-Host ""
+    
+    Write-Host "${ANSI.TEXT_SECONDARY}Popular PowerShell snippets:${ANSI.RESET}"
+    Write-Host " ${ANSI.GREEN}1.${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Get System Information${ANSI.RESET}"
+    Write-Host " ${ANSI.GREEN}2.${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Test Network Connectivity${ANSI.RESET}"
+    Write-Host " ${ANSI.GREEN}3.${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Manage Services${ANSI.RESET}"
+    Write-Host " ${ANSI.GREEN}4.${ANSI.RESET} ${ANSI.TEXT_PRIMARY}File Operations${ANSI.RESET}"
+    Write-Host " ${ANSI.GREEN}5.${ANSI.RESET} ${ANSI.TEXT_PRIMARY}Registry Operations${ANSI.RESET}"
+    Write-Host ""
+    
+    $snippetChoice = Read-ValidatedSubInput -Max 5
+    
+    switch ($snippetChoice) {
+        1 {
+            Write-Host ""
+            Write-Host "${ANSI.PURPLE}${ANSI.BOLD}GET SYSTEM INFORMATION${ANSI.RESET}"
+            Write-Host "${ANSI.BORDER}──────────────────────${ANSI.RESET}"
+            Write-Host ""
+            Write-Host "${ANSI.TEXT_SECONDARY}Copy and paste this code:${ANSI.RESET}"
+            Write-Host ""
+            Write-Host '${ANSI.TEXT_PRIMARY}# Get system information${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}$computerInfo = Get-ComputerInfo${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}$osInfo = Get-CimInstance Win32_OperatingSystem${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}$cpuInfo = Get-CimInstance Win32_Processor${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}$memInfo = Get-CimInstance Win32_PhysicalMemory${ANSI.RESET}'
+            Write-Host ""
+            Write-Host '${ANSI.TEXT_SECONDARY}Write-Host "Computer: $($computerInfo CsName)"${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}Write-Host "OS: $($osInfo Caption)"${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}Write-Host "CPU: $($cpuInfo Name)"${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}Write-Host "Memory: $([math]::Round((($memInfo | Measure-Object Capacity -Sum).Sum / 1GB), 2)) GB"${ANSI.RESET}'
+        }
+        
+        2 {
+            Write-Host ""
+            Write-Host "${ANSI.PURPLE}${ANSI.BOLD}TEST NETWORK CONNECTIVITY${ANSI.RESET}"
+            Write-Host "${ANSI.BORDER}──────────────────────────${ANSI.RESET}"
+            Write-Host ""
+            Write-Host "${ANSI.TEXT_SECONDARY}Copy and paste this code:${ANSI.RESET}"
+            Write-Host ""
+            Write-Host '${ANSI.TEXT_PRIMARY}# Test network connectivity${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}function Test-NetworkConnectivity {${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}    param([string]$Target = "8.8.8.8", [int]$Port = 53)${ANSI.RESET}'
+            Write-Host ""
+            Write-Host '${ANSI.TEXT_SECONDARY}    try {${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        $tcpClient = New-Object System.Net.Sockets.TcpClient${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        $connectAsync = $tcpClient.BeginConnect($Target, $Port, $null, $null)${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        $success = $connectAsync.AsyncWaitHandle.WaitOne(3000, $false)${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        if ($success) {${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}            $tcpClient.EndConnect($connectAsync)${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}            Write-Host "${ANSI.GREEN}✓ Connected to $Target:$Port${ANSI.RESET}"${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}            return $true${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        } else {${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}            Write-Host "${ANSI.RED}× Connection timeout${ANSI.RESET}"${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}            return $false${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        }${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}    } catch {${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        Write-Host "${ANSI.RED}× Connection failed: $($_.Exception.Message)${ANSI.RESET}"${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        return $false${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}    } finally {${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        if ($tcpClient) { $tcpClient.Close() }${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}    }${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}}${ANSI.RESET}'
+        }
+        
+        3 {
+            Write-Host ""
+            Write-Host "${ANSI.PURPLE}${ANSI.BOLD}MANAGE SERVICES${ANSI.RESET}"
+            Write-Host "${ANSI.BORDER}───────────────${ANSI.RESET}"
+            Write-Host ""
+            Write-Host "${ANSI.TEXT_SECONDARY}Copy and paste this code:${ANSI.RESET}"
+            Write-Host ""
+            Write-Host '${ANSI.TEXT_PRIMARY}# Manage Windows services${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}function Get-ServiceStatus {${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}    param([string]$Name)${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}    try {${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        $service = Get-Service -Name $Name -ErrorAction Stop${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        return @{${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}            Name = $service.Name${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}            DisplayName = $service.DisplayName${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}            Status = $service.Status${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}            StartType = $service.StartType${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        }${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}    } catch {${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        Write-Error "Service $Name not found"${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}    }${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}}${ANSI.RESET}'
+        }
+        
+        4 {
+            Write-Host ""
+            Write-Host "${ANSI.PURPLE}${ANSI.BOLD}FILE OPERATIONS${ANSI.RESET}"
+            Write-Host "${ANSI.BORDER}───────────────${ANSI.RESET}"
+            Write-Host ""
+            Write-Host "${ANSI.TEXT_SECONDARY}Copy and paste this code:${ANSI.RESET}"
+            Write-Host ""
+            Write-Host '${ANSI.TEXT_PRIMARY}# Advanced file operations${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}function Search-Files {${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}    param(${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        [string]$Path = ".",${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        [string]$Pattern = "*",${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        [switch]$Recurse${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}    )${ANSI.RESET}'
+            Write-Host ""
+            Write-Host '${ANSI.TEXT_SECONDARY}    $params = @{${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        Path = $Path${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        Filter = $Pattern${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}    }${ANSI.RESET}'
+            Write-Host ""
+            Write-Host '${ANSI.TEXT_SECONDARY}    if ($Recurse) { $params.Recurse = $true }${ANSI.RESET}'
+            Write-Host ""
+            Write-Host '${ANSI.TEXT_SECONDARY}    Get-ChildItem @params | ForEach-Object {${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        [PSCustomObject]@{${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}            Name = $_.Name${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}            Path = $_.FullName${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}            Size = $_.Length${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}            Modified = $_.LastWriteTime${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        }${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}    }${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}}${ANSI.RESET}'
+        }
+        
+        5 {
+            Write-Host ""
+            Write-Host "${ANSI.PURPLE}${ANSI.BOLD}REGISTRY OPERATIONS${ANSI.RESET}"
+            Write-Host "${ANSI.BORDER}───────────────────${ANSI.RESET}"
+            Write-Host ""
+            Write-Host "${ANSI.TEXT_SECONDARY}Copy and paste this code:${ANSI.RESET}"
+            Write-Host ""
+            Write-Host '${ANSI.TEXT_PRIMARY}# Registry operations${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}function Get-RegistryValue {${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}    param(${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        [string]$Path,${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        [string]$Name${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}    )${ANSI.RESET}'
+            Write-Host ""
+            Write-Host '${ANSI.TEXT_SECONDARY}    try {${ANSI.RESET}'
+            Write-Host '${ANSI.TEXT_SECONDARY}        $value = Get-ItemProperty -Path $Path -Name $Name -ErrorAction Stop${ANSI.RESET'
+```
