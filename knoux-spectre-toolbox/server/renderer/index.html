@@ -1,0 +1,464 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Knoux Spectre Toolbox</title>
+  <style>
+    :root{
+      --bg0:#070b16;
+      --bg1:#0b1020;
+      --bg2:#0f1730;
+      --card:#0f1836cc;
+      --stroke:#ffffff14;
+      --text:#e8ecff;
+      --muted:#a8b2d8;
+      --accent:#7c3aed;
+      --accent2:#22c55e;
+      --danger:#ef4444;
+      --shadow: 0 24px 70px rgba(0,0,0,.55);
+      --radius: 16px;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 600px at 20% 10%, rgba(124,58,237,.25), transparent 60%),
+        radial-gradient(900px 500px at 85% 25%, rgba(34,197,94,.18), transparent 60%),
+        linear-gradient(180deg, var(--bg1), var(--bg0));
+      overflow:hidden;
+    }
+
+    .app{
+      height:100%;
+      display:grid;
+      grid-template-columns: 290px 1fr;
+    }
+
+    /* Sidebar */
+    .sidebar{
+      border-right: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:14px;
+    }
+
+    .brand{
+      display:flex;
+      align-items:center;
+      gap:12px;
+      padding:10px 12px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.25);
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
+    .logo{
+      width:38px;height:38px;border-radius:12px;
+      background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.25), transparent 55%),
+                  linear-gradient(135deg, rgba(124,58,237,.95), rgba(34,197,94,.6));
+      display:grid;place-items:center;
+      font-weight:800;
+      letter-spacing:.5px;
+    }
+    .brand h1{font-size:14px;margin:0;line-height:1.1}
+    .brand p{margin:2px 0 0 0;color:var(--muted);font-size:12px}
+
+    .nav{
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+    }
+    .nav button{
+      width:100%;
+      text-align:left;
+      padding:10px 12px;
+      border-radius: 12px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text);
+      cursor:pointer;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .nav button:hover{
+      background: rgba(255,255,255,.05);
+      border-color: var(--stroke);
+    }
+    .nav button.active{
+      background: rgba(124,58,237,.18);
+      border-color: rgba(124,58,237,.35);
+      box-shadow: 0 12px 40px rgba(124,58,237,.12);
+    }
+
+    .pill{
+      margin-top:auto;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.20);
+      padding:12px;
+      border-radius: 14px;
+      color:var(--muted);
+      font-size:12px;
+    }
+
+    /* Main */
+    .main{display:flex;flex-direction:column;min-width:0;}
+    .topbar{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      padding:16px 18px;
+      border-bottom: 1px solid var(--stroke);
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02));
+      backdrop-filter: blur(10px);
+    }
+
+    .search{
+      flex:1;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      padding:10px 12px;
+      border-radius: 14px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.25);
+      max-width: 580px;
+    }
+    .search input{
+      width:100%;
+      border:none;
+      outline:none;
+      background: transparent;
+      color: var(--text);
+      font-size:13px;
+    }
+    .badge{
+      font-size:12px;
+      padding:6px 10px;
+      border-radius: 999px;
+      border:1px solid var(--stroke);
+      background: rgba(255,255,255,.04);
+      color: var(--muted);
+      white-space:nowrap;
+    }
+    .badge.ok{
+      border-color: rgba(34,197,94,.35);
+      background: rgba(34,197,94,.10);
+      color: #b8f7cd;
+    }
+
+    .content{
+      padding:18px;
+      overflow:auto;
+      height:100%;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:16px;
+      align-items:start;
+    }
+
+    .card{
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.25);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+    }
+    .card .hd{
+      padding:14px 14px;
+      border-bottom: 1px solid var(--stroke);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.01));
+    }
+    .card .hd h2{margin:0;font-size:14px}
+    .card .bd{padding:14px}
+
+    .btn{
+      border:none;
+      cursor:pointer;
+      padding:10px 12px;
+      border-radius: 12px;
+      color: var(--text);
+      background: rgba(255,255,255,.06);
+      border: 1px solid var(--stroke);
+      font-weight: 600;
+    }
+    .btn:hover{background: rgba(255,255,255,.10)}
+    .btn.primary{
+      background: linear-gradient(135deg, rgba(124,58,237,.9), rgba(124,58,237,.55));
+      border-color: rgba(124,58,237,.55);
+    }
+    .btn.primary:hover{filter:brightness(1.05)}
+    .btn.good{
+      background: linear-gradient(135deg, rgba(34,197,94,.7), rgba(34,197,94,.35));
+      border-color: rgba(34,197,94,.55);
+    }
+
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+
+    .kvs{display:grid;gap:10px}
+    .kv{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--stroke);
+      background: rgba(255,255,255,.03);
+    }
+    .kv .k{color:var(--muted);font-size:12px}
+    .kv .v{font-size:12px}
+
+    .log{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 12px;
+      line-height:1.45;
+      white-space:pre-wrap;
+      word-break:break-word;
+      background: rgba(0,0,0,.40);
+      border: 1px solid var(--stroke);
+      border-radius: 14px;
+      padding:12px;
+      min-height: 220px;
+    }
+
+    .statusDot{display:inline-block;width:8px;height:8px;border-radius:999px;background:var(--danger);margin-right:8px;}
+    .statusDot.ok{background:var(--accent2)}
+
+    .small{color:var(--muted);font-size:12px;line-height:1.5}
+
+    @media (max-width: 1020px){
+      .app{grid-template-columns: 1fr}
+      .sidebar{display:none}
+      .grid{grid-template-columns: 1fr}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="logo">K</div>
+        <div>
+          <h1>KNOUX SPECTRE</h1>
+          <p>Desktop Toolbox (Electron)</p>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav">
+        <button class="active" data-page="dashboard">Dashboard</button>
+        <button data-page="system-audit">System Audit</button>
+        <button data-page="prompt">AI Prompt Engine</button>
+        <button data-page="about">About</button>
+      </nav>
+
+      <div class="pill">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+          <div>
+            <div style="font-weight:700;">API Status</div>
+            <div class="small" id="apiUrl"></div>
+          </div>
+          <div style="white-space:nowrap;">
+            <span class="statusDot" id="apiDot"></span>
+            <span id="apiText">Offline</span>
+          </div>
+        </div>
+        <div style="margin-top:10px" class="small">
+          Tip: If your server UI is running, this app will automatically load it. Otherwise it uses this local fallback UI.
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="search">
+          <span style="opacity:.7">⌕</span>
+          <input id="search" placeholder="Search modules…" />
+        </div>
+        <span class="badge">v0.1 desktop</span>
+        <span class="badge" id="secureBadge">secure contextIsolation</span>
+        <span class="badge ok" id="envBadge">ENV</span>
+      </div>
+
+      <div class="content">
+        <div class="grid">
+          <section class="card">
+            <div class="hd">
+              <h2 id="pageTitle">Dashboard</h2>
+              <div class="row">
+                <button class="btn" id="btnPing">Ping API</button>
+                <button class="btn primary" id="btnAudit">Run Audit</button>
+              </div>
+            </div>
+            <div class="bd">
+              <div class="kvs">
+                <div class="kv"><div class="k">API Base</div><div class="v" id="kvApiBase">-</div></div>
+                <div class="kv"><div class="k">Auth</div><div class="v">x-api-key (required)</div></div>
+                <div class="kv"><div class="k">Allowed Functions</div><div class="v">Get-SystemAuditReport / Invoke-EmotionalAdjuster / Invoke-RecordHistoryEvent</div></div>
+              </div>
+
+              <div style="margin-top:14px" class="small" id="helpText">
+                Use the buttons above to test connectivity and run a sample audit call. This UI is intentionally minimal and safe.
+              </div>
+
+              <div style="margin-top:14px">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+                  <div style="font-weight:700">Output</div>
+                  <div class="small">API key is not stored; you can paste it below.</div>
+                </div>
+                <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;align-items:center">
+                  <input id="apiKey" placeholder="API Key (x-api-key)" style="flex:1;min-width:220px;padding:10px 12px;border-radius:12px;border:1px solid var(--stroke);background:rgba(0,0,0,.25);color:var(--text);outline:none" />
+                  <button class="btn good" id="btnSaveKey">Use Key</button>
+                </div>
+                <div style="margin-top:10px" class="log" id="log"></div>
+              </div>
+            </div>
+          </section>
+
+          <aside class="card">
+            <div class="hd">
+              <h2>Quick Actions</h2>
+              <span class="badge">Local UI</span>
+            </div>
+            <div class="bd">
+              <div class="small">
+                These actions call the Express API (/api/v1/execute). If your server is running on another port, set PORT or API_BASE when launching Electron.
+              </div>
+              <div class="row" style="margin-top:12px">
+                <button class="btn" data-action="history">Record History Event</button>
+                <button class="btn" data-action="emotion">Emotional Adjuster</button>
+              </div>
+
+              <div style="margin-top:12px" class="kvs">
+                <div class="kv"><div class="k">Renderer Mode</div><div class="v">Fallback</div></div>
+                <div class="kv"><div class="k">Security</div><div class="v">contextIsolation: true</div></div>
+              </div>
+
+              <div style="margin-top:12px" class="small">
+                Next upgrade: replace this fallback UI with a proper Vite app (React/Vue) and component library.
+              </div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const apiBase = (window.knoux && window.knoux.apiBase) ? window.knoux.apiBase : 'http://localhost:5000';
+    $('apiUrl').textContent = apiBase;
+    $('kvApiBase').textContent = apiBase;
+    $('envBadge').textContent = (window.knoux && window.knoux.env && window.knoux.env.NODE_ENV) ? window.knoux.env.NODE_ENV : 'unknown';
+
+    let apiKey = '';
+
+    function setApiStatus(ok) {
+      $('apiDot').classList.toggle('ok', !!ok);
+      $('apiText').textContent = ok ? 'Online' : 'Offline';
+    }
+
+    function log(obj) {
+      const stamp = new Date().toLocaleTimeString();
+      const text = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
+      $('log').textContent = `[${stamp}] ${text}\n\n` + $('log').textContent;
+    }
+
+    async function ping() {
+      try {
+        const res = await fetch(apiBase + '/', { headers: apiKey ? { 'x-api-key': apiKey } : {} });
+        setApiStatus(res.ok);
+        log({ ping: res.status, ok: res.ok });
+      } catch (e) {
+        setApiStatus(false);
+        log({ error: String(e) });
+      }
+    }
+
+    async function execute(fn, params) {
+      const res = await fetch(apiBase + '/api/v1/execute', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(apiKey ? { 'x-api-key': apiKey } : {})
+        },
+        body: JSON.stringify({ function: fn, params })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      return data;
+    }
+
+    $('btnSaveKey').addEventListener('click', () => {
+      apiKey = $('apiKey').value.trim();
+      log(apiKey ? 'API key set for this session.' : 'API key cleared.');
+    });
+
+    $('btnPing').addEventListener('click', ping);
+
+    $('btnAudit').addEventListener('click', async () => {
+      try {
+        log('Running Get-SystemAuditReport...');
+        const out = await execute('Get-SystemAuditReport', {});
+        log(out);
+      } catch (e) {
+        log({ error: String(e) });
+      }
+    });
+
+    document.querySelectorAll('[data-action]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const action = btn.getAttribute('data-action');
+        try {
+          if (action === 'history') {
+            log('Recording history event...');
+            const out = await execute('Invoke-RecordHistoryEvent', { message: 'Desktop UI test event', level: 'info' });
+            log(out);
+          } else if (action === 'emotion') {
+            log('Invoking emotional adjuster...');
+            const out = await execute('Invoke-EmotionalAdjuster', { mood: 'calm', intensity: 1 });
+            log(out);
+          }
+        } catch (e) {
+          log({ error: String(e) });
+        }
+      });
+    });
+
+    // Simple nav title changes
+    document.querySelectorAll('#nav button').forEach((b) => {
+      b.addEventListener('click', () => {
+        document.querySelectorAll('#nav button').forEach((x) => x.classList.remove('active'));
+        b.classList.add('active');
+        const page = b.getAttribute('data-page');
+        const titleMap = {
+          'dashboard': 'Dashboard',
+          'system-audit': 'System Audit',
+          'prompt': 'AI Prompt Engine',
+          'about': 'About'
+        };
+        $('pageTitle').textContent = titleMap[page] || 'Dashboard';
+      });
+    });
+
+    // Auto ping on load
+    ping();
+  </script>
+</body>
+</html>
