@@ -44,8 +44,30 @@ function Import-KnouxCore {
         Write-Log "[LOADER] Shared helpers loaded" "DEBUG"
     }
     
-    Write-Log "[LOADER] Core initialization completed" "INFO"
+    # Append extra core menu item imports to support explicit submenu handlers
+    try {
+        $coreMenuDb = Join-Path $PSScriptRoot "coremenuitems.db"
+        $menuHeredoc = @"
+# Import submenu handlers mapped to main controller buttons shown via UI Navbars
+# Required imports even though auto loaded indirectly from path recursion because PowerShell scoping boundaries don't recursively cascade nested module symbols outward implicitly during dot-sourcing unless forced with Export clause override directives done carefully module side
 }
+mod.automation/task.scheduler.ps1`, `Show-AutomationCenter`
+@{ label = "🔐 SECURITY PENTEST"; scriptblock = {
+        if (-not(Test-AdminPrivilege)) {
+            Write-Host "${ANSI.RED}[!] Some tools might behave limitedly due to missing elevated execution context.${ANSI.RESET}" 
+            Start-Sleep -Milliseconds 850 } ; return $( Show-HashToolkit )}
+},
+devops/env.manager.ps1, Show-DevOpsHelpers,
+scripts/builder.generator.ps1, mod.scriptgen/batch.builder.ps1, backup/module.ps1
+"@
+
+        Add-Content -Path $coreMenuDb -Value $menuHeredoc -Encoding UTF8 -Force
+        Write-Log "[LOADER] Appended core menu items stub to $coreMenuDb" "DEBUG"
+    } catch {
+        Write-Log "[LOADER] Failed to append core menu items: $($_.Exception.Message)" "WARN"
+    }
+
+    Write-Log "[LOADER] Core initialization completed" "INFO"
 
 # Automatically run on import
 Import-KnouxCore
