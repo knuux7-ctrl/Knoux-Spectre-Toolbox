@@ -51,7 +51,7 @@ function Get-ThemePath {
     return $null
 }
 
-function View-Theme {
+function Show-Theme {
     $path = Get-ThemePath
     if (-not $path) { Write-Host "${ANSI.RED}× theme.json not found in config/${ANSI.RESET}"; return }
 
@@ -60,7 +60,8 @@ function View-Theme {
         Write-Host "${ANSI.PURPLE}${ANSI.BOLD}CURRENT THEME:${ANSI.RESET}"
         Write-Host "${ANSI.BORDER}────────────────${ANSI.RESET}"
         $json | ConvertTo-Json -Depth 10 | Write-Host
-    } catch {
+    }
+    catch {
         Write-Host "${ANSI.RED}× Error reading theme: $($_.Exception.Message)${ANSI.RESET}"
     }
 }
@@ -71,13 +72,14 @@ function Edit-ColorPalette {
 
     try {
         $json = Get-Content -Path $path -Raw | ConvertFrom-Json
-    } catch {
+    }
+    catch {
         Write-Host "${ANSI.RED}× Error reading theme: $($_.Exception.Message)${ANSI.RESET}"; return
     }
 
     Write-Host "${ANSI.TEXT_SECONDARY}Available color keys:${ANSI.RESET}"
     $keys = $json.PSObject.Properties.Name
-    for ($i=0; $i -lt $keys.Count; $i++) {
+    for ($i = 0; $i -lt $keys.Count; $i++) {
         Write-Host " ${ANSI.YELLOW}$($i+1)${ANSI.RESET} ${ANSI.TEXT_PRIMARY}$($keys[$i])${ANSI.RESET}"
     }
 
@@ -100,7 +102,8 @@ function Edit-ColorPalette {
     try {
         $json | ConvertTo-Json -Depth 10 | Set-Content -Path $path -Encoding UTF8
         Write-Host "${ANSI.GREEN}✓ Theme updated: $selectedKey = $newValue${ANSI.RESET}"
-    } catch {
+    }
+    catch {
         Write-Host "${ANSI.RED}× Error saving theme: $($_.Exception.Message)${ANSI.RESET}"
     }
 }
@@ -120,7 +123,8 @@ function Import-ThemeFile {
         $obj = $content | ConvertFrom-Json
         $content | Set-Content -Path $path -Encoding UTF8
         Write-Host "${ANSI.GREEN}✓ Theme imported successfully from $file${ANSI.RESET}"
-    } catch {
+    }
+    catch {
         Write-Host "${ANSI.RED}× Invalid JSON or import failed: $($_.Exception.Message)${ANSI.RESET}"
     }
 }
@@ -137,7 +141,8 @@ function Export-ThemeFile {
     try {
         Copy-Item -Path $path -Destination $file -Force
         Write-Host "${ANSI.GREEN}✓ Theme exported to $file${ANSI.RESET}"
-    } catch {
+    }
+    catch {
         Write-Host "${ANSI.RED}× Export failed: $($_.Exception.Message)${ANSI.RESET}"
     }
 }
@@ -148,7 +153,8 @@ function Preview-Theme {
 
     try {
         $json = Get-Content -Path $path -Raw | ConvertFrom-Json
-    } catch {
+    }
+    catch {
         Write-Host "${ANSI.RED}× Error reading theme: $($_.Exception.Message)${ANSI.RESET}"; return
     }
 
