@@ -1,51 +1,6 @@
 <#
 .SYNOPSIS
     Knoux Spectre Toolbox Menu Engine
-#>
-
-function Show-KnouxSubMenu {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory=$true)][string]$Title,
-        [Parameter(Mandatory=$true)][array]$MenuItems,
-        [string]$BackLabel = "Back"
-    )
-
-    do {
-        Clear-Host
-        Write-Host "=== $Title ===" -ForegroundColor Cyan
-        for ($i=0; $i -lt $MenuItems.Count; $i++) {
-            $num = $i + 1
-            Write-Host " $num) $($MenuItems[$i].Label)"
-        }
-        Write-Host " 0) $BackLabel"
-
-        $choice = Read-ValidatedSubInput -Max $MenuItems.Count
-        if ($choice -eq 0) { return }
-
-        $sel = $MenuItems[$choice - 1]
-        if ($sel.Action -and (Get-Command $sel.Action -ErrorAction SilentlyContinue)) { & $sel.Action }
-        elseif ($sel.ScriptBlock) { & $sel.ScriptBlock }
-        else { Write-Host "Action not found" -ForegroundColor Red }
-
-        Write-Host "Press any key to continue..."; $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-    } while ($true)
-}
-
-function Read-ValidatedSubInput {
-    param([int]$Max)
-    do {
-        Write-Host "Select option (0-$Max): " -NoNewline
-        $input = Read-Host
-        if ($input -match '^[0-9]+$') { $n = [int]$input; if ($n -ge 0 -and $n -le $Max) { return $n } }
-        Write-Host "Invalid selection" -ForegroundColor Red
-    } while ($true)
-}
-
-Export-ModuleMember -Function @('Show-KnouxSubMenu','Read-ValidatedSubInput')
-<#
-.SYNOPSIS
-    Knoux Spectre Toolbox Menu Engine
 .DESCRIPTION
     Provides advanced menu navigation and rendering capabilities
 .AUTHOR
@@ -57,83 +12,69 @@ Export-ModuleMember -Function @('Show-KnouxSubMenu','Read-ValidatedSubInput')
 function Show-KnouxSubMenu {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory=$true)]
-        [string]$Title,
-        
-        [Parameter(Mandatory=$true)]
-        [array]$MenuItems,
-        
+        [Parameter(Mandatory = $true)][string]$Title,
+        [Parameter(Mandatory = $true)][array]$MenuItems,
         [string]$BackLabel = "Back to Main Menu"
     )
-    
+
     do {
         Clear-ScreenWithBackground
-        
+
         # Display title
-        Write-Host "${ANSI.BG_DARK}${ANSI.PURPLE}${ANSI.BOLD}$Title${ANSI.RESET}"
-        Write-Host "${ANSI.BORDER}$((-join (1..($Title.Length + 4) | ForEach-Object { "─" }))])${ANSI.RESET}"
+        $bg = if ($script:ANSI.ContainsKey('BG_DARK')) { $script:ANSI['BG_DARK'] } else { '' }
+        $purple = if ($script:ANSI.ContainsKey('PURPLE')) { $script:ANSI['PURPLE'] } else { '' }
+        $reset = if ($script:ANSI.ContainsKey('RESET')) { $script:ANSI['RESET'] } else { '' }
+        $border = if ($script:ANSI.ContainsKey('BORDER')) { $script:ANSI['BORDER'] } else { '' }
+
+        Write-Host "${bg}${purple}${Title}${reset}"
+        $line = (1..($Title.Length + 4) | ForEach-Object { '─' }) -join ''
+        Write-Host "${border}$line${reset}"
         Write-Host ""
-        
+
         # Display menu items
         for ($i = 0; $i -lt $MenuItems.Count; $i++) {
             $item = $MenuItems[$i]
-            Write-Host " ${ANSI.PURPLE}$($i + 1)${ANSI.RESET}  ${ANSI.TEXT_PRIMARY}$($item.Label)${ANSI.RESET}"
+            $indexColor = if ($script:ANSI.ContainsKey('PURPLE')) { $script:ANSI['PURPLE'] } else { '' }
+            $textPrimary = if ($script:ANSI.ContainsKey('TEXT_PRIMARY')) { $script:ANSI['TEXT_PRIMARY'] } else { '' }
+            Write-Host " ${indexColor}$($i + 1)${reset}  ${textPrimary}$($item.Label)${reset}"
         }
-        
+
         Write-Host ""
-        Write-Host " ${ANSI.RED}0${ANSI.RESET}  ${ANSI.TEXT_PRIMARY}$BackLabel${ANSI.RESET}"
+        Write-Host " ${ (if ($script:ANSI.ContainsKey('RED')) { $script:ANSI['RED'] } else { '' }) }0${reset}  ${ (if ($script:ANSI.ContainsKey('TEXT_PRIMARY')) { $script:ANSI['TEXT_PRIMARY'] } else { '' }) }$BackLabel${reset}"
         Write-Host ""
-        
+
         $choice = Read-ValidatedSubInput -Max $MenuItems.Count
-        
-        if ($choice -eq 0) {
-            return
-        }
-        
-        # Execute the selected action
+
+        if ($choice -eq 0) { return }
+
         $selectedItem = $MenuItems[$choice - 1]
-        if ($selectedItem.Action -and (Get-Command $selectedItem.Action -ErrorAction SilentlyContinue)) {
-            & $selectedItem.Action
-        } elseif ($selectedItem.ScriptBlock) {
-            & $selectedItem.ScriptBlock
-        } else {
-            Write-Host "${ANSI.RED}× Action not found${ANSI.RESET}"
-            Start-Sleep -Milliseconds 500
-        }
-        
+        if ($selectedItem.Action -and (Get-Command $selectedItem.Action -ErrorAction SilentlyContinue)) { & $selectedItem.Action }
+        elseif ($selectedItem.ScriptBlock) { & $selectedItem.ScriptBlock }
+        else { Write-Host "× Action not found" }
+
         Write-Host ""
-        Write-Host "${ANSI.TEXT_SECONDARY}Press any key to continue...${ANSI.RESET}"
+        Write-Host "Press any key to continue..."
         $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
-        
+
     } while ($true)
 }
 
 function Read-ValidatedSubInput {
     [CmdletBinding()]
-    param(
-        [int]$Max
-    )
-    
+    param([int]$Max)
     do {
-        Write-Host "${ANSI.PURPLE}┌─ Select Option${ANSI.RESET}" -NoNewline
-        Write-Host "${ANSI.TEXT_SECONDARY} (0-$Max)${ANSI.RESET}" -NoNewline
-        Write-Host "${ANSI.PURPLE}:${ANSI.RESET} " -NoNewline
-        
+        $promptColor = if ($script:ANSI.ContainsKey('PURPLE')) { $script:ANSI['PURPLE'] } else { '' }
+        $textSec = if ($script:ANSI.ContainsKey('TEXT_SECONDARY')) { $script:ANSI['TEXT_SECONDARY'] } else { '' }
+        $reset = if ($script:ANSI.ContainsKey('RESET')) { $script:ANSI['RESET'] } else { '' }
+
+        Write-Host "${promptColor}┌─ Select Option${reset}" -NoNewline
+        Write-Host "${textSec} (0-$Max)${reset}" -NoNewline
+        Write-Host "${promptColor}:${reset} " -NoNewline
+
         $input = Read-Host
-        
-        if ([string]::IsNullOrWhiteSpace($input)) {
-            Write-Host "${ANSI.RED}× Invalid selection. Please try again.${ANSI.RESET}"
-            continue
-        }
-        
-        if ($input -match '^\d+$') {
-            $number = [int]$input
-            if ($number -ge 0 -and $number -le $Max) {
-                return $number
-            }
-        }
-        
-        Write-Host "${ANSI.RED}× Invalid selection. Please enter a number between 0-$Max.${ANSI.RESET}"
+        if ([string]::IsNullOrWhiteSpace($input)) { Write-Host "Invalid selection" ; continue }
+        if ($input -match '^\d+$') { $number = [int]$input; if ($number -ge 0 -and $number -le $Max) { return $number } }
+        Write-Host "Invalid selection. Please enter a number between 0-$Max.";
     } while ($true)
 }
 
