@@ -147,7 +147,7 @@ function Export-ThemeFile {
     }
 }
 
-function Show-ThemePreview {
+function Preview-Theme {
     $path = Get-ThemePath
     if (-not $path) { Write-Host "${ANSI.RED}× theme.json not found in config/${ANSI.RESET}"; return }
 
@@ -172,7 +172,5 @@ function Show-ThemePreview {
     Write-Host ""
     Write-Host "${ANSI.TEXT_SECONDARY}Preview completed (limited to console colors)${ANSI.RESET}"
 }
-
-function Preview-Theme { Show-ThemePreview }
 
 Export-ModuleMember -Function @('Show-ThemeConfigurator')

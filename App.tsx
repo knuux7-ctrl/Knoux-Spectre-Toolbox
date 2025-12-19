@@ -5,9 +5,9 @@ import { ModuleType } from './types';
 import { PromptEngine } from './components/PromptEngine';
 import { SystemAudit } from './components/SystemAudit';
 import { ThemeSystem } from './components/ThemeSystem';
-import { SystemModule } from './components/SystemModule';
-import { DiskModule } from './components/DiskModule';
-import { NetworkModule } from './components/NetworkModule';
+import { SystemModule } from './src/components/SystemModule';
+import { DiskModule } from './src/components/DiskModule';
+import { NetworkModule } from './src/components/NetworkModule';
 import { 
   Search, Bell, User, LayoutGrid, 
   Menu, X, ExternalLink, ChevronRight,
