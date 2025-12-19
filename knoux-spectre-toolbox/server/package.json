@@ -19,6 +19,6 @@
   },
   "devDependencies": {
     "concurrently": "^8.0.0",
-    "electron": "^26.0.0"
+    "electron": "^39.2.7"
   }
 }
