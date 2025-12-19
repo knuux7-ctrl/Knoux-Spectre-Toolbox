@@ -2,17 +2,26 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
 export class GeminiService {
-  private ai: GoogleGenAI;
+  private ai: GoogleGenAI | null = null;
 
   constructor() {
-    // Fix: Use process.env.API_KEY directly as per guidelines
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+    const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
+    if (apiKey) {
+      this.ai = new GoogleGenAI({ apiKey });
+    }
+  }
+
+  isConfigured(): boolean {
+    return this.ai !== null;
   }
 
   async generateCode(prompt: string, language: 'powershell' | 'python' | 'batch') {
+    if (!this.ai) {
+      throw new Error("Gemini API key not configured. Please set GEMINI_API_KEY environment variable.");
+    }
     try {
       const response = await this.ai.models.generateContent({
-        model: 'gemini-3-pro-preview',
+        model: 'gemini-2.0-flash',
         contents: `Generate a robust ${language} script for the following task: ${prompt}. 
                    The script should include proper headers, comments, and follow professional best practices. 
                    Ensure the output is ONLY the code block.`,
@@ -30,10 +39,12 @@ export class GeminiService {
   }
 
   async auditSystem(mockStatus: string) {
-    // Simulated "AI Insight" into system health
+    if (!this.ai) {
+      return "AI insights unavailable. Please configure GEMINI_API_KEY.";
+    }
     try {
       const response = await this.ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.0-flash',
         contents: `Based on these system metrics: ${mockStatus}, provide a one-paragraph professional analysis of system health and one recommendation.`,
       });
       return response.text;

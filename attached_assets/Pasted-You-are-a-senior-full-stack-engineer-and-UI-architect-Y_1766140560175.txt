@@ -1,0 +1,112 @@
+You are a senior full-stack engineer and UI architect.
+
+Your task is to IMPORT, SYNC, and TRANSFORM the following GitHub repository
+into a full Desktop-style Web Application (NOT a simple website):
+
+Repository:
+https://github.com/knuux7-ctrl/Knoux-Spectre-Toolbox.git
+
+=====================================================
+MANDATORY REQUIREMENTS
+=====================================================
+
+1. Clone and synchronize the repository structure.
+2. Do NOT discard the project identity.
+3. Convert the CLI-based toolbox into a Desktop-like Web App.
+4. The result must feel like a real operating environment, not a landing page.
+
+=====================================================
+APPLICATION TYPE
+=====================================================
+
+Desktop-Style Web Application (WebOS / Control Panel style)
+
+- Windowed interface
+- Sidebar navigation
+- Tool panels
+- Cards & modules
+- Keyboard-friendly
+- Fast, local-feeling UX
+
+=====================================================
+TECH STACK (REQUIRED)
+=====================================================
+
+Frontend:
+- React + TypeScript
+- Vite
+- TailwindCSS
+- Lucide Icons
+- Framer Motion (for subtle animations)
+
+Backend:
+- Node.js (local only)
+- PowerShell integration (execute local scripts safely)
+- No external cloud dependency required
+
+=====================================================
+VISUAL IDENTITY (STRICT)
+=====================================================
+
+Theme: Knoux Dark Cosmic Neon
+
+Background: #0E1117
+Primary Purple: #7C3AED
+Highlight Purple: #A855F7
+Success Green: #22C55E
+Warning Orange: #F59E0B
+Error Red: #EF4444
+Text Primary: #E5E7EB
+Text Secondary: #9CA3AF
+
+Design Style:
+- Glassmorphism panels
+- Neon borders
+- Subtle glow
+- Dark premium hacker/dev aesthetic
+- Inspired by terminal + modern desktop UI
+
+=====================================================
+UI STRUCTURE
+=====================================================
+
+- Left Sidebar:
+  - 20 sections mapped from the original toolbox
+  - Icons + labels
+- Main Workspace:
+  - Each tool opens as a panel / card
+  - Logs and outputs shown live
+- Header Bar:
+  - App name
+  - Status indicators
+  - Settings button
+
+=====================================================
+FUNCTIONAL REQUIREMENTS
+=====================================================
+
+- Each toolbox section must correspond to a real module.
+- Buttons must trigger real actions or scripts.
+- No fake buttons.
+- No demo placeholders.
+- Errors must be handled and displayed.
+
+=====================================================
+PROJECT GOAL
+=====================================================
+
+Transform Knoux Spectre Toolbox into a:
+- Premium Desktop-like Web Toolbox
+- Developer / Hacker Control Center
+- Modular, expandable platform
+
+=====================================================
+OUTPUT
+=====================================================
+
+- Initialize the Web App inside the Replit workspace
+- Sync logic with the GitHub repository
+- Provide a runnable Web Desktop interface
+- Maintain Knoux branding everywhere
+
+Start immediately and treat this as a production-grade transformation.
