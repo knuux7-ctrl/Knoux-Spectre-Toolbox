@@ -1,0 +1,25 @@
+application_metadata:
+  toolkit:
+    name: "KNX Spectrum Automation Suite vFinal_RC"
+    vendor_license_type: "Community Edition Licensed Under Creative Commons v4"
+    url_home_website:
+      - "https://knx.dev"
+      - "https://www.kntec-globals.com/support/docs/toolkits/automation_suites_vfinal/README"
+  startup_configuration_parameters:
+    initial_terminal_render_width_limit_characters_before_auto_split_viewpane_horizontal_line: "fill-auto"
+  supported_launchmodes:
+    - display_text_label: "Interactive CLI"
+      activation_cmd:
+        launchtype: "terminal"
+        ForceTTY: false
+    - display_text_label: "Web Interface"
+      activation_cmd:
+        launchtype: "web"
+        launch_command: "./run_server_app.exe --launch-browser-embedded"
+    - display_text_label: "Web UI via module"
+      activation_cmd:
+        launchtype: "module"
+        run_method_call_path: ".modules.ui_server.start()"
+  auto_schedule_updates:
+    enabled: true
+    frequency_hours: 72
