@@ -60,6 +60,7 @@ mod.automation/task.scheduler.ps1`, `Show-AutomationCenter`
 devops/env.manager.ps1, Show-DevOpsHelpers,
 scripts/builder.generator.ps1, mod.scriptgen/batch.builder.ps1, backup/module.ps1
 "@
+<<<<<<< Updated upstream
 
         Add-Content -Path $coreMenuDb -Value $menuHeredoc -Encoding UTF8 -Force
         Write-Log "[LOADER] Appended core menu items stub to $coreMenuDb" "DEBUG"
@@ -68,6 +69,17 @@ scripts/builder.generator.ps1, mod.scriptgen/batch.builder.ps1, backup/module.ps
     }
 
     Write-Log "[LOADER] Core initialization completed" "INFO"
+=======
+>>>>>>> Stashed changes
 
-# Automatically run on import
-Import-KnouxCore
+        Add-Content -Path $coreMenuDb -Value $menuHeredoc -Encoding UTF8 -Force
+        Write-Log "[LOADER] Appended core menu items stub to $coreMenuDb" "DEBUG"
+    }
+    catch {
+        Write-Log "[LOADER] Failed to append core menu items: $($_.Exception.Message)" "WARN"
+    }
+
+    Write-Log "[LOADER] Core initialization completed" "INFO"
+
+    # Automatically run on import
+    Import-KnouxCore
