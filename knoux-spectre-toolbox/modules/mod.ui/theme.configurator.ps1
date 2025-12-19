@@ -51,7 +51,7 @@ function Get-ThemePath {
     return $null
 }
 
-function Show-Theme {
+function View-Theme {
     $path = Get-ThemePath
     if (-not $path) { Write-Host "${ANSI.RED}× theme.json not found in config/${ANSI.RESET}"; return }
 
