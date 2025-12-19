@@ -20,19 +20,19 @@ function Import-KnouxCore {
     
     # Recreate ANSI hashtable from theme config
     $script:ANSI = @{
-        RESET         = $script:ThemeConfig.ansi.reset
-        BOLD          = $script:ThemeConfig.ansi.bold
-        DIM           = $script:ThemeConfig.ansi.dim
-        BG_DARK       = $script:ThemeConfig.ansi.bg_dark
-        TEXT_PRIMARY  = $script:ThemeConfig.ansi.text_primary
-        TEXT_SECONDARY= $script:ThemeConfig.ansi.text_secondary
-        TEXT_FADED    = $script:ThemeConfig.ansi.text_faded
-        PURPLE        = $script:ThemeConfig.ansi.purple
-        PURPLE_HOVER  = $script:ThemeConfig.ansi.purple_hover
-        GREEN         = $script:ThemeConfig.ansi.green
-        ORANGE        = $script:ThemeConfig.ansi.orange
-        RED           = $script:ThemeConfig.ansi.red
-        BORDER        = $script:ThemeConfig.ansi.border
+        RESET          = $script:ThemeConfig.ansi.reset
+        BOLD           = $script:ThemeConfig.ansi.bold
+        DIM            = $script:ThemeConfig.ansi.dim
+        BG_DARK        = $script:ThemeConfig.ansi.bg_dark
+        TEXT_PRIMARY   = $script:ThemeConfig.ansi.text_primary
+        TEXT_SECONDARY = $script:ThemeConfig.ansi.text_secondary
+        TEXT_FADED     = $script:ThemeConfig.ansi.text_faded
+        PURPLE         = $script:ThemeConfig.ansi.purple
+        PURPLE_HOVER   = $script:ThemeConfig.ansi.purple_hover
+        GREEN          = $script:ThemeConfig.ansi.green
+        ORANGE         = $script:ThemeConfig.ansi.orange
+        RED            = $script:ThemeConfig.ansi.red
+        BORDER         = $script:ThemeConfig.ansi.border
     }
     
     Write-Log "[LOADER] Theme engine loaded successfully" "DEBUG"
